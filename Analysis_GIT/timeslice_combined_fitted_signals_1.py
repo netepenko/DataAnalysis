@@ -182,7 +182,7 @@ def plot_data(channels):
       #f_name = "./Analysis_Results/"+str(29975)+"/Raw_Fitting/fit_results_4_"+ str(29975) + "_{0:5.3f}_{1:5.3f}_{2:d}.npz".format(0.000, 0.500, ch)#self.par['dtmin']/us, self.par['dtmax']/us, self.par['channel'])
       (dtmin,dtmax) = db.retrieve('dtmin, dtmax', 'Raw_Fitting', 'Shot = '+ str(shot) + ' AND Channel = '+ str(ch))      
       #cdata.par.get_value('input_result_file', str)
-      pf_name =  "./Analysis_Results/"+str(shot)+"/Rate_Plotting/rate_results_4_"+ str(shot) + "_{0:5.3f}_{1:5.3f}_{2:d}.npz".format(dtmin, dtmax, ch)#cdata.par.get_value('output_file', str)
+      pf_name =  "../Analysis_Results/"+str(shot)+"/Rate_Plotting/rate_results_4_"+ str(shot) + "_{0:5.3f}_{1:5.3f}_{2:d}.npz".format(dtmin, dtmax, ch)#cdata.par.get_value('output_file', str)
       
       #f_name = res_dir + f_name
       #pf_name = res_dir + pf_name
@@ -209,7 +209,7 @@ def plot_data(channels):
       # dA = B.get_data(pd, 'dA')
       # 
       # Total signal
-      B.plot_exp(t, Ap, dAp, color = colors[ channels[i] ],label = 'Ch {}'.format(channels[i]), capsize = 0.)
+      B.plot_exp(t, Ap, dAp, color = colors[ channels[i] ], ecolor='grey', label = 'Ch {}'.format(channels[i]), capsize = 0.)
       # B.plot_line(t, A, color = colors[i])
       #
       B.pl.xlabel('t [s]')
@@ -358,7 +358,7 @@ def write_file():
     ST = SawTeeth(fig, file_obj = o )
     ST.add_crash_high_edges()
     
-o_file='./Analysis_Results/'+str(shot)+'/Step_Dir/ts_file.data' #ts_file = step_dir + ts_file
+o_file='../Analysis_Results/'+str(shot)+'/Step_Dir/ts_file.data' #ts_file = step_dir + ts_file
 fig = B.pl.figure(1)
 if  not os.path.exists(os.path.dirname(o_file)):
     os.makedirs(os.path.dirname(o_file))

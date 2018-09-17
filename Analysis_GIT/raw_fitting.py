@@ -18,9 +18,9 @@ us=1.e6
 
 def fit_interval(self, tmin=None, tmax=None, plot=None):
         
-        
-        V=self.Vps
-        td=self.td # time data in analysis interval
+        sl = fu.get_window_slice(tmin*us, self.td, tmax*us)
+        V=self.Vps[sl]
+        td=self.td[sl]
         dt=self.dt
         
 #        Vline=np.array([]) #to save fitted line
@@ -114,10 +114,12 @@ def fit_interval(self, tmin=None, tmax=None, plot=None):
         
         #if interval is specified for fitting
         if tmin and tmax:
+            
             if (tmin*us>=self.par['dtmin']) and (tmax*us<=self.par['dtmax']) and tmin<tmax:
                 #find fit groups covering the interval
-                inmin=np.where(td[imax_fit]>tmin*us)[0][0] #index of tmin in time data
-                in_max=np.where(td[imax_fit]>tmax*us)[0][0] #index of tmax in time data
+                print td[imax_fit][0], td[imax_fit][-1], tmin*us, tmax*us
+                inmin=np.where(td[imax_fit]>=tmin*us)[0][0] #index of first peak in fitting interval in time data
+                in_max=np.where(td[imax_fit]<=tmax*us)[0][-1] #index of tmax in time data
                 gtf=np.empty((0,2), int)    #list of groups in interval to fit
                 gtfs=np.empty((0,2), int)
                 for f in fg:
@@ -364,11 +366,11 @@ def fit_interval(self, tmin=None, tmax=None, plot=None):
             print 'no results saved!'
         else:
             # save the fitted data
-            o_file = self.var['res_dir'] + "fit_results_4_"+ str(self.par['shot']) + "_{0:5.3f}_{1:5.3f}_{2:d}.npz".format(tmin, tmax, self.par['channel'])
+            o_file = self.var['res_dir'] + "fit_results_"+ str(self.par['shot']) + "_{0:5.3f}_{1:5.3f}_{2:d}.npz".format(tmin, tmax, self.par['channel'])
             if  not os.path.exists(os.path.dirname(o_file)):
                 os.makedirs(os.path.dirname(o_file))
             if os.path.isfile(o_file):
-                o_file= self.var['res_dir'] + "fit_results_4_"+ str(self.par['shot']) + "_{0:5.3f}_{1:5.3f}_{2:d}".format(tmin, tmax, self.par['channel'])+time.strftime('%d_%m_%Y_%H_%M_%S')+".npz" 
+                o_file= self.var['res_dir'] + "fit_results_"+ str(self.par['shot']) + "_{0:5.3f}_{1:5.3f}_{2:d}".format(tmin, tmax, self.par['channel'])+time.strftime('%d_%m_%Y_%H_%M_%S')+".npz" 
             n_lines = tp.shape[0]
             np.savez_compressed(o_file, t=tp, V=Vp, A=A_fit, sig_A=sig_A_fit, bkg=bkg_par)
             print "Wrote : ", n_lines, " lines to the output file"

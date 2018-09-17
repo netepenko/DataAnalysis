@@ -286,19 +286,24 @@ class rates_plotting():
         
         # proton sum signal 
         if draw_p == 'True':  
-            B.plot_exp(np.array(slice_t)/us, A_sp/dt*us, dA_sp/dt*us, marker='.', color = 'b', capsize = 0.) #,markeredgecolor='g',
+            B.plot_exp(np.array(slice_t)/us, A_sp/dt*us, dA_sp/dt*us, marker='.', color = 'b', ecolor='grey', capsize = 0.) #,markeredgecolor='g',
         
         # triton sum signal
         if draw_t == 'True':
-            B.plot_exp(np.array(slice_t)/us, A_st/dt*us, dA_st/dt*us, color = 'g', capsize = 0.)
+            B.plot_exp(np.array(slice_t)/us, A_st/dt*us, dA_st/dt*us, color = 'g', ecolor='grey', capsize = 0.)
         
         # pulser sum signal
         if add_pulser == 'True':
-            B.plot_exp(np.array(slice_t)/us, A_pul/dt*us, dA_pul/dt*us, color = 'm', capsize = 0.)
+            B.plot_exp(np.array(slice_t)/us, A_pul/dt*us, dA_pul/dt*us, color = 'm', ecolor='grey', capsize = 0.)
         
         # Total signal
         if draw_sum == 'True':
-            B.plot_exp(np.array(slice_t)/us, A_t/dt*us, dA_t/dt*us, color = 'r', capsize = 0.)
+            B.plot_exp(np.array(slice_t)/us, A_t/dt*us, dA_t/dt*us, color = 'r', ecolor='grey', capsize = 0.)
+        
+        o_file = self.var['of_name']
+        
+        if  not os.path.exists(os.path.dirname(o_file)):
+                os.makedirs(os.path.dirname(o_file))
         
         B.pl.xlabel('t [s]')
         B.pl.ylabel('Rate [Hz]')
@@ -307,10 +312,8 @@ class rates_plotting():
         B.pl.show()
         B.pl.savefig('../Analysis_Results/%d/Rate_Plotting/Rate_%s.png' %(self.par['shot'],self.var['f_name'][-16:-6]))
         # write results
-        o_file = self.var['of_name']
         
-        if  not os.path.exists(os.path.dirname(o_file)):
-                os.makedirs(os.path.dirname(o_file))
+        
 #        if os.path.isfile(o_file):
 #            inp = raw_input("Do you want to overwrite the results file? (y)es or (n)o: ") 
 #            if inp == "yes" or inp == "y": 

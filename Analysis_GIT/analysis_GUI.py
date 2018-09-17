@@ -9,7 +9,9 @@ from PyQt5 import QtCore, QtWidgets
 import channel_data_class as cdc
 from rates_plottingclass import rates_plotting as rp
 import matplotlib.pyplot as pl
+import database_operations as db
 
+us = 1e6
 
 class Ui_MainWindow(QtWidgets.QMainWindow):
     def setupUi(self):
@@ -69,12 +71,17 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.plotRawButton.clicked.connect(self.plotRaw)
         self.plotRawButton.setText('Plot data')
 
+        self.savePDB = QtWidgets.QPushButton(self.tab1)
+        self.savePDB.setGeometry(QtCore.QRect(640, 19, 100, 23))
+        self.savePDB.clicked.connect(self.savePtoDB)
+        self.savePDB.setText('Save peak to DB')
+
         ###################################
 
         self.chi2 = QtWidgets.QDoubleSpinBox(self.tab1)
         self.chi2.setGeometry(QtCore.QRect(200, 60, 150, 22))
         self.chi2.setMinimum(0.01)
-        self.chi2.setMaximum(0.2)
+        self.chi2.setMaximum(20.0)
         self.chi2.setValue(0.05)
         self.chi2.setSingleStep(0.01)
         self.chi2.setPrefix("Chi2 = ")
@@ -91,6 +98,19 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.findGood.setGeometry(QtCore.QRect(370, 60, 100, 23))
         self.findGood.clicked.connect(self.findGoodPeaks)
         self.findGood.setText('Find good peaks')
+        
+        self.saveGood = QtWidgets.QCheckBox(self.tab1)
+        self.saveGood.setGeometry(QtCore.QRect(490, 65, 15, 15)) 
+        self.saveGood.setChecked(False)
+        
+        self.saveLabel = QtWidgets.QLabel(self.tab1)
+        self.saveLabel.setGeometry(QtCore.QRect(510, 60, 120, 23))
+        self.saveLabel.setText('Save good peaks to DB')
+
+        self.loadP = QtWidgets.QPushButton(self.tab1)
+        self.loadP.setGeometry(QtCore.QRect(640, 60, 100, 23))
+        self.loadP.clicked.connect(self.loadPeaks)
+        self.loadP.setText('Load peaks (DB)')
 
         ####################################
 
@@ -125,10 +145,15 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.intb.setGeometry(QtCore.QRect(40, 140, 150, 22))
         self.intb.setMinimum(0.)
         self.intb.setValue(0.)
-        self.intb.setDecimals(4)
+        self.intb.setDecimals(6)
         self.intb.setSingleStep(0.1)
         self.intb.setPrefix("Interval to fit = ")
-
+        
+        self.setIntb = QtWidgets.QPushButton(self.tab1)
+        self.setIntb.setGeometry(QtCore.QRect(40, 170, 150, 23))
+        self.setIntb.clicked.connect(self.set_intb)
+        self.setIntb.setText('Set interval strart from plot')
+        
         self.inte = QtWidgets.QDoubleSpinBox(self.tab1)
         self.inte.setGeometry(QtCore.QRect(200, 140, 150, 22))
         self.inte.setMinimum(0.0)
@@ -136,6 +161,11 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.inte.setValue(0.1)
         self.inte.setSingleStep(0.01)
         self.inte.setSuffix(" s")
+        
+        self.setInte = QtWidgets.QPushButton(self.tab1)
+        self.setInte.setGeometry(QtCore.QRect(200, 170, 150, 23))
+        self.setInte.clicked.connect(self.set_inte)
+        self.setInte.setText('Set interval end from plot')
 
         self.fitInt = QtWidgets.QPushButton(self.tab1)
         self.fitInt.setGeometry(QtCore.QRect(370, 140, 100, 23))
@@ -143,11 +173,19 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.fitInt.setText('Fit interval')
 
         self.plfit = QtWidgets.QCheckBox(self.tab1)
-        self.plfit.setGeometry(QtCore.QRect(500, 144, 15, 15))
+        self.plfit.setGeometry(QtCore.QRect(490, 144, 15, 15))
         self.plfit.setChecked(False)
+        
+        self.saveInt = QtWidgets.QCheckBox(self.tab1)
+        self.saveInt.setGeometry(QtCore.QRect(620, 144, 15, 15))
+        self.saveInt.setChecked(False)
+        
+        self.siLabel = QtWidgets.QLabel(self.tab1)
+        self.siLabel.setGeometry(QtCore.QRect(640, 140, 100, 23))
+        self.siLabel.setText('Write interval to DB')
 
         self.plLaber = QtWidgets.QLabel(self.tab1)
-        self.plLaber.setGeometry(QtCore.QRect(520, 140, 100, 23))
+        self.plLaber.setGeometry(QtCore.QRect(510, 140, 100, 23))
         self.plLaber.setText('Plot fitting results')
 
         ################################################
@@ -209,7 +247,34 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.cumulHist.setText('Cumulative histo')
 
         self.tabWidget.setCurrentIndex(0)
-
+    
+    def savePtoDB(self):
+        if pl.get_fignums()!=[]:
+            try:
+                x = pl.xlim()[0]/us
+                y = pl.xlim()[1]/us
+                pn, okPressed = QtWidgets.QInputDialog.getInt(self, "Enter peak number","Value:", 1, 0, 12, 1)
+                if okPressed:
+                    db.writetodb('b'+str(pn)+'='+str(x)+', e'+str(pn)+'='+str(y), 'Peak_Sampling',
+                             'Shot = '+str(self.Shot.value())+' AND Channel = '+str(self.Channel.value()))  
+            except:
+                self.errormsg('Something went wrong!')
+        else:
+            self.errormsg('No open plot found.')
+    def set_intb(self):
+        try:
+            self.intb.setValue(pl.xlim()[0]/us)
+            self.data.par['dtmin'] = self.intb.value()*us
+        except:
+            self.errormsg('Something went wrong!')
+            
+    def set_inte(self):
+        try:
+            self.inte.setValue(pl.xlim()[1]/us)
+            self.data.par['dtmax'] = self.inte.value()*us
+        except:
+            self.errormsg('Something went wrong!')
+            
     def selectplFile(self):
         self.fileDialog = QtWidgets.QFileDialog(self)
         self.fileDialog.setDirectory('../Analysis_Results/%d/Raw_Fitting/' %
@@ -231,11 +296,15 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
     def findGoodPeaks(self):
         self.data.chi2 = self.chi2.value()
         self.data.Vgp = self.Vgp.value()
-        self.data.peak_shape()
+        self.data.find_good_peaks(self.saveGood.isChecked())
 
     def fitInterval(self):
-        self.data.fit_interval(self.intb.value(), self.inte.value(),
-                               self.plfit.checkState())
+        self.data.fit_interval(self.intb.value(), self.inte.value(), self.plfit.isChecked())
+        if self.saveInt.isChecked():
+            db.writetodb('dtmin = '+str(self.intb.value()), 'Raw_Fitting',
+                     'Shot = '+str(self.Shot.value()) + ' AND Channel = '+ str(self.Channel.value()))
+            db.writetodb('dtmax = '+ str(self.inte.value()), 'Raw_Fitting',
+                     'Shot = '+str(self.Shot.value()) + ' AND Channel = '+ str(self.Channel.value()))
 
     def loadData(self):
         try:
@@ -246,6 +315,12 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
             self.inte.setValue(self.data.par['dtmax']/10**6)
         except:
             self.stBar1.setText("Couldn't load the data")
+            
+    def loadPeaks(self):
+        try:
+            self.data.load_peaks()
+        except:
+            self.errormsg("Couldn't load peaks from database")
 
 #    def selectFile(self):
 #

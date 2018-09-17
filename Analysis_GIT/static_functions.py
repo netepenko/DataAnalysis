@@ -1,10 +1,15 @@
 # general peak shape
 import numpy as np
 def peak(x, a, b):
-    x_0 = np.log((2.*b)/a-1.)/(2.*b)
+    if 2.*b/a-1.>0:
+        x_0 = np.log(2.*b/a-1.)/(2.*b)
+    else:
+        x_0 = 0
     y_0 = np.exp(-a*(x_0))*(1.+np.tanh(b*(x_0)))
-    y=1./y_0*np.exp(-a*(x+x_0))*(1.+np.tanh(b*(x+x_0)))
-    # estimate width
+#    good = np.where(abs(a*(x+x_0))<10.0)
+#    y=np.zeros_like(x)
+    y = 1./y_0*np.exp(-a*(x+x_0))*(1.+np.tanh(b*(x+x_0)))
+#    # estimate width
     ismall = y<0.5
     try:
         idiff = np.diff(np.where(ismall)[0])
@@ -19,9 +24,10 @@ def peak(x, a, b):
 def get_window_slice(xmin, x, xmax):
         # get the slice corresponding to xmin and xmax in x
         # the x-values need to be equally spaced
+        
         dx = x[1] - x[0]
-        nmin = max( 0, int( (xmin - x[0])/dx ))
-        nmax = min( (int( (xmax - x[0])/dx ) + 1), len(x) -1 )
+        nmin = max( 0, int(round( (xmin - x[0])/dx )))
+        nmax = min( (int(round ((xmax - x[0])/dx ))), len(x) -1  )
         return slice(nmin, nmax + 1)
         
 def get_fit_groups_new(num_peaks, imax, t_off, t):

@@ -291,6 +291,10 @@ def create_table():
     
 #retrieve data
 def retrieve(params, table, where): 
+    ''' Retrieves paremeters from table in database. Takes 3 str arguments, 1 - paremeters to retrieve, 2 - table containing
+    that parameters, 3 - condition to specify the line in table.
+    Example: retrieve('Folder, File_Name', 'Shot_List', 'Shot = 29975')
+    '''
     conn = lite.connect('MainDB.db')
     #create query line
     qline='SELECT '+ params +' FROM ' + table + ' WHERE ' + where
@@ -311,14 +315,34 @@ def writetodb(params, table, where):
         cur = conn.cursor()
         cur.execute(qline)
     conn.close()
+
+#return pevious(existing in database) shot number
+def prevshot(shot):
+    '''Retrieves previous existing shot number, takes one input - shot number, will return
+    shot number which exist in database before entered input shot number.
+    Example: prevshot(29976)
+    '''
+    conn = lite.connect('MainDB.db')
+    (rowid,) = retrieve('ROWID', 'Shot_List', 'Shot = ' + str(shot))
+    print rowid
+    #create query line
+    qline='SELECT Shot FROM Shot_List WHERE ROWID = ' + str(rowid-1) 
+    with conn:
+        cur = conn.cursor()
+        cur.execute(qline)
+        return cur.fetchall()[0][0]
+    conn.close()
     
-#duplicate row in databse
+#duplicate certain row in databse
 def copyrow(table, where, sub):
-    
+    '''Creates copy of the raw in table and changes some values in it.
+    Takes 3 str arguments, 1 - table where to perform copying, 2 - specifies parameters defining the raw to be copied,
+    3 - what to change in copied raw.
+    Example: copyrow('Raw_Fitting', 'Shot = 29975 AND Channel = 0', 'Channel = 1')
+    '''
     conn = lite.connect('MainDB.db')
     #create query line
     qline='INSERT INTO '+ table + ' SELECT * '+'FROM ' + table + ' WHERE ' + where
-    
     with conn:
         cur = conn.cursor()
         cur.execute(qline)
@@ -327,9 +351,10 @@ def copyrow(table, where, sub):
     conn.close()
 
 if __name__ == "__main__":
-    wheredb_cp = ('Shot = 29973 AND Channel = 1')
+    wheredb_cp = ('Shot = 29975 AND Channel = 0')
+    print wheredb_cp
     #create()
     try:
-        copyrow('Peak_Sampling', wheredb_cp, 'Shot = 29976, Channel = 1')
+        copyrow('Peak_Sampling', wheredb_cp, 'Shot = 29976, Channel = 0')
     except: 
         print "Didnt work"
