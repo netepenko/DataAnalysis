@@ -29,23 +29,29 @@ import raw_fitting
 import peak_sampling
 from my_plot import my_plot
 
+# convert needs to be set true only for data wich was written in int16 format
+# while declared as float (mistake in LabView acquisition code lead to this confusion)
 convert = True
 # --------------------------------
 # --------------------------------
-
+# conversion to microseconds constant
+us = 1.e6
 
 class channel_data():
-    # conversion to microseconds constant
-    global us
-    us = 1.e6
+    
 
     # initialize the class instance
     def __init__(self, shot, channel):
+        wheredb = 'Shot = ' + str(shot) + ' AND Channel = ' + str(channel)
+        # frequently used string to retrieve data from database that indicates shot and chennel
+        
         def read_database_par():
             # read from database Raw_Fitting table interval limits for analysis
             # if DB doesnt contain parameters for selected shot and channel copy
             # them from another channel or even another shot
     
+            (self.par['exp_dir'], self.par['exp_file']) = db.retrieve(
+                    'Folder, File_Name', 'Shot_List', 'Shot = ' + str(shot))
             
             (self.par['dtmin'], self.par['dtmax']) = np.asarray(
                     db.retrieve('dtmin, dtmax', 'Raw_Fitting', wheredb))*us
@@ -84,25 +90,14 @@ class channel_data():
         self.par['shot'] = shot
         self.par['channel'] = channel
 
-        
-
-        wheredb = 'Shot = ' + str(shot) + ' AND Channel = ' + str(channel)
-        # frequently used string to retrieve data from database
-        # that indicates shot and chennel
-        
-        try:
-            (self.par['exp_dir'], self.par['exp_file']) = db.retrieve(
-                    'Folder, File_Name', 'Shot_List', 'Shot = ' + str(shot))
-        except:
-            print "Given shot is not found in the shot list or some other problem occured!"
-            return
 
         
         try:
             read_database_par()
-
         except:
-            print "Couldn't find parameters for Channel ", channel
+            
+            print "Couldn't read parameters for Shot %d Channel %d" %(shot, channel)
+            
             shot_cp = self.par['shot']   
             ch_cp = self.par['channel'] - 1  # copy param from prev channel
             
@@ -110,7 +105,6 @@ class channel_data():
                           ' AND Channel = ' + str(ch_cp))
             
             try:
-                
                 db.copyrow('Raw_Fitting', wheredb_cp, 'Shot = ' + str(shot) +
                            ', Channel = ' + str(channel))
                 db.copyrow('Peak_Sampling', wheredb_cp, 'Shot = ' + str(shot) +
@@ -148,6 +142,7 @@ class channel_data():
         self.var['bkg_len'] = len(self.var['vary_codes_bkg'])
         self.var['peak_num'] = 1  # running number for peak selection
         self.var['data_plot'] = None
+        
         # assign directories for results (edit later for good tree structure!!)
         self.var['res_dir'] = ('../Analysis_Results/' +
                                str(shot) + '/Raw_Fitting/')
@@ -169,11 +164,12 @@ class channel_data():
 
         # get the y dataset length
         nall = f[data_root + 'y-axis/data_vector/data'].shape[0]
+        
         # make time array based on number of points in y data
         tall = t0 + dt*np.arange(nall, dtype=float)
 
-#        # data window for analysis (indices in all data array)
-#        tds = fu.get_window_slice(self.par['dtmin'], tall, self.par['dtmax'])
+        # data window for analysis (indices in all data array)
+        #tds = fu.get_window_slice(self.par['dtmin'], tall, self.par['dtmax'])
 
         # get the y dataset (measured data)
         if convert:

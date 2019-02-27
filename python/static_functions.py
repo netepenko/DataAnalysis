@@ -39,7 +39,7 @@ def get_fit_groups_new(num_peaks, imax, t_off, t):
         # total number of peaks   
         n_peaks = imax.shape[0]
         # total time interval to be fitted
-        t_tot = t[-1]
+        t_tot = t[-1] - t[0]
         t_res = t[1] - t[0]
         # average time between peaks
         delta_t = t_tot/n_peaks
@@ -53,6 +53,7 @@ def get_fit_groups_new(num_peaks, imax, t_off, t):
         same_group = False
         i_offset = int(t_off/t_res)
         i_window = int(fit_window/t_res)
+        
         i_group = (imax - i_offset)/i_window
         init_first_group = True 
         for i, ig in enumerate(i_group):

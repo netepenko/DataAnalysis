@@ -286,7 +286,7 @@ class rates_plotting():
         
         # proton sum signal 
         if draw_p == 'True':  
-            B.plot_exp(np.array(slice_t)/us, A_sp/dt*us, dA_sp/dt*us, marker='.', color = 'b', ecolor='grey', capsize = 0.) #,markeredgecolor='g',
+            B.plot_exp(np.array(slice_t)/us, A_sp/dt*us, dA_sp/dt*us, linestyle = '-', marker = 'o', color = 'b', ecolor='grey', capsize = 0.) #,markeredgecolor='g',
         
         # triton sum signal
         if draw_t == 'True':
@@ -298,7 +298,7 @@ class rates_plotting():
         
         # Total signal
         if draw_sum == 'True':
-            B.plot_exp(np.array(slice_t)/us, A_t/dt*us, dA_t/dt*us, color = 'r', ecolor='grey', capsize = 0.)
+            B.plot_exp(np.array(slice_t)/us, A_t/dt*us, dA_t/dt*us, linestyle = '-',ecolor='grey', marker = '.',   capsize = 0., label='Ch %d'%self.par['channel'])#color = 'r',ecolor='grey', #
         
         o_file = self.var['of_name']
         

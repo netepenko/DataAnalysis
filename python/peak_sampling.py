@@ -95,6 +95,7 @@ def fit_shape(self, ts, Vt):
 def find_good_peaks(self, save):
         tmin = self.par['dtmin']
         tmax = self.par['dtmax']
+        print 'Looking for good peaks in interval (%f, %f)' %(tmin, tmax)
         sl = fu.get_window_slice(tmin, self.td, tmax)
         Vps=self.Vps[sl]
         td=self.td[sl]
@@ -119,7 +120,7 @@ def find_good_peaks(self, save):
         print " found : ", nmin, " minima"
         #imin = pmin[:nmin]
         
-        # get the indices of peaks higher then threshold, last peak removed(idk why...)
+        # get the indices of peaks higher then threshold, last peak removed
         ipeak_tr = np.delete(np.where(Vps[imax]>Vgp)[0],-1)
         
         tp = td[imax][ipeak_tr]
@@ -127,19 +128,18 @@ def find_good_peaks(self, save):
 
 
         #go through found peaks and determine the shape of peak
-        #by requiring  fit error to be less then some value
+        #by requiring  fit error to be less then some value set in GUI
         
         
         
         i=1
         j=0
-        attempts=0
         #pl.figure()
         
         if  not os.path.exists("../Analysis_Results/%d/Good_peaks/" %self.par['shot']):
                 os.makedirs("../Analysis_Results/%d/Good_peaks/" %self.par['shot'])
         sz=5 #mutliplier at slice size
-        while j < 12 and attempts < 1000 and i < len(tp):
+        while j < 12 and i < 1000 and i < len(tp):
             #tssa.append(fu.get_window_slice(tp[i]-n_samp/2*dt, td, tp[i]+n_samp/2*dt))
             sl=fu.get_window_slice(tp[i]-sz*self.par['rise_time'], td, tp[i]+sz*self.par['decay_time'])
         
@@ -149,37 +149,38 @@ def find_good_peaks(self, save):
             
             F, alpha, beta, H, offset, x0 = self.fit_shape(ts,Vt)
             
+            i+=1
             if F.chi2 > self.chi2: 
-                   
-                i+=1
                 print "bad peak"
-                attempts += 1
+                if not (i < 1000 and i < len(tp)):
+                    print "Finding good peaks failed after %d attempts." %i
                 continue 
         
             if save:
-                x = (tp[i]-sz*self.par['rise_time'])/us
-                y = (tp[i]+sz*self.par['decay_time'])/us      
+                x = (tp[i-1]-sz*self.par['rise_time'])/us
+                y = (tp[i-1]+sz*self.par['decay_time'])/us      
                 pn = j + 1
                 db.writetodb('b'+str(pn)+'='+str(x)+', e'+str(pn)+'='+str(y), 'Peak_Sampling',
                      'Shot = '+str(self.par['shot'])+' AND Channel = '+str(self.par['channel']))        
             if True: #plot_peak_samples:
                     pl.figure()
+                    pl.plot(ts, Vps[sl], '*', label='Peak %d original')
                     pl.plot(ts, Vt, '.', label='Peak %d Normalized' %j)
-                    pl.plot(ts,F.func(ts), color='b', label='fit_line')
+                    pl.plot(ts,F.func(ts), color='b', label='Fit_line')
                     pl.legend()
+                    pl.xlabel('t(us)')
+                    pl.ylabel('V')
                     pl.axis('tight')
-                    
+                    pl.savefig("../Analysis_Results/%d/Good_peaks/Peak_%d.png" %(self.par['shot'], j))
             #renormalize with fitted parameters
             Vt = (Vt-offset)/H
             
             if j==0: Vtotal=np.zeros_like(Vt)
             Vtotal = Vtotal + Vt
        
-       
-            
             j+=1
-            i+=1
-        
+            
+        print i, j
         # calculate the average of all renormalized peaks
         Vtotal=Vtotal/float(j)
         self.Vtotal = Vtotal
@@ -189,10 +190,12 @@ def find_good_peaks(self, save):
         # check the fit
         if True: 
             pl.figure()
-            pl.plot(ts, Vtotal,'.', color='g', label='Peaks average')
+            pl.plot(ts, Vtotal,'.', label='Peaks average')
             pl.plot(ts,F.func(ts), color='b', label='fit_line')
             pl.legend()
-        
+            pl.xlabel('t(us)')
+            pl.ylabel('V')
+            pl.savefig("../Analysis_Results/%d/Good_peaks/Peaks_average.png" %self.par['shot'])
         # get width of peak:
         sig = fu.peak(F.xpl-x0, alpha, beta)[0]
         self.par['decay_time'] = 1/alpha

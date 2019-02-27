@@ -10,12 +10,14 @@ import channel_data_class as cdc
 from rates_plottingclass import rates_plotting as rp
 import matplotlib.pyplot as pl
 import database_operations as db
+import glob as G
 
+#seconds to microseconds 
 us = 1e6
 
 class Ui_MainWindow(QtWidgets.QMainWindow):
+    
     def setupUi(self):
-
         self.resize(800, 600)
         self.setWindowTitle("Data analysis GUI")
 
@@ -176,6 +178,18 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.plfit.setGeometry(QtCore.QRect(490, 144, 15, 15))
         self.plfit.setChecked(False)
         
+        self.plLaber = QtWidgets.QLabel(self.tab1)
+        self.plLaber.setGeometry(QtCore.QRect(510, 140, 100, 23))
+        self.plLaber.setText('Plot fitting results')
+        
+        self.saveFitr = QtWidgets.QCheckBox(self.tab1)
+        self.saveFitr.setGeometry(QtCore.QRect(490, 175, 15, 15))
+        self.saveFitr.setChecked(False)
+        
+        self.sfLaber = QtWidgets.QLabel(self.tab1)
+        self.sfLaber.setGeometry(QtCore.QRect(510, 170, 100, 23))
+        self.sfLaber.setText('Save fitting results')
+        
         self.saveInt = QtWidgets.QCheckBox(self.tab1)
         self.saveInt.setGeometry(QtCore.QRect(620, 144, 15, 15))
         self.saveInt.setChecked(False)
@@ -184,9 +198,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.siLabel.setGeometry(QtCore.QRect(640, 140, 100, 23))
         self.siLabel.setText('Write interval to DB')
 
-        self.plLaber = QtWidgets.QLabel(self.tab1)
-        self.plLaber.setGeometry(QtCore.QRect(510, 140, 100, 23))
-        self.plLaber.setText('Plot fitting results')
+        
 
         ################################################
 
@@ -224,6 +236,11 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.plotRateBut.setGeometry(QtCore.QRect(370, 60, 100, 23))
         self.plotRateBut.clicked.connect(self.plotRate)
         self.plotRateBut.setText('Plot rate')
+        
+        self.plotAllCh = QtWidgets.QPushButton(self.tab2)
+        self.plotAllCh.setGeometry(QtCore.QRect(500, 60, 150, 23))
+        self.plotAllCh.clicked.connect(self.plotAll)
+        self.plotAllCh.setText('Plot rates all channels')
 
         self.bins = QtWidgets.QSpinBox(self.tab2)
         self.bins.setGeometry(QtCore.QRect(40, 100, 150, 22))
@@ -283,10 +300,25 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.fileDialog.destroy()
 
     def plotRate(self):
-        plov = rp(self.Shot1.value(), self.Channel1.value(), self.plFile[0])
+        try:
+            plov = rp(self.Shot1.value(), self.Channel1.value(), G.glob('../Analysis_Results/%d/Raw_Fitting/*%d.npz' %(self.Shot1.value(),self.Channel1.value()))[0])
+        except:
+            self.selectplFile()
+            plov = rp(self.Shot1.value(), self.Channel1.value(), self.plFile[0])
         plov.par['sig_ratio'] = self.sigRat.value()
         plov.par['time_slice_width'] = self.tsl.value()
         plov.plot_results()
+        
+    def plotAll(self):
+        files = G.glob('../Analysis_Results/%d/Raw_Fitting/*.npz' %self.Shot1.value())
+        for fitres in files:
+            print fitres[fitres.index('z')-4]
+            plov = rp(self.Shot1.value(), int(fitres[fitres.index('z')-4]), fitres)
+            plov.par['sig_ratio'] = self.sigRat.value()
+            plov.par['time_slice_width'] = self.tsl.value()
+            plov.plot_results()
+        pl.legend()
+        pl.title('All channels rates')
 
     def addPuls(self):
         self.data.par['P_amp'] = self.pulsHight.value()
@@ -299,7 +331,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.data.find_good_peaks(self.saveGood.isChecked())
 
     def fitInterval(self):
-        self.data.fit_interval(self.intb.value(), self.inte.value(), self.plfit.isChecked())
+        self.data.fit_interval(self.intb.value(), self.inte.value(), self.plfit.isChecked(), self.saveFitr.isChecked())
         if self.saveInt.isChecked():
             db.writetodb('dtmin = '+str(self.intb.value()), 'Raw_Fitting',
                      'Shot = '+str(self.Shot.value()) + ' AND Channel = '+ str(self.Channel.value()))
@@ -311,11 +343,12 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
             self.data = cdc.channel_data(self.Shot.value(),
                                          self.Channel.value())
             self.stBar1.setText(self.data.par['exp_file'])
-            self.intb.setValue(self.data.par['dtmin']/10**6)
-            self.inte.setValue(self.data.par['dtmax']/10**6)
+            self.intb.setValue(self.data.par['dtmin']/us)
+            self.inte.setValue(self.data.par['dtmax']/us)
         except:
-            self.stBar1.setText("Couldn't load the data")
-            
+            self.stBar1.setText("Couldn't load the data.")
+            self.errormsg('Cannot open data file.')
+    
     def loadPeaks(self):
         try:
             self.data.load_peaks()
@@ -349,15 +382,15 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         try:
             self.data.plot_raw()
         except:
-            self.errormsg('Load data first')
+            self.errormsg('Data plotting failed.')
 
     def errormsg(self, text):
         QtWidgets.QMessageBox.warning(self, 'Message', text)
 
 if __name__ == "__main__":
     import sys
-    # check if Qt app exists already
     app = QtCore.QCoreApplication.instance()
+    # check if Qt app exists already
     if app is None:
         # create one if no
         app = QtWidgets.QApplication(sys.argv)
@@ -365,5 +398,12 @@ if __name__ == "__main__":
     ui = Ui_MainWindow()
     ui.setupUi()
     ui.show()
-
+    
+# used for debugging
+#    ui.Channel.setValue(3)
+#    ui.loadData()
+#    ui.intb.setValue(0.145664)
+#    ui.inte.setValue(0.1459)
+#    ui.data.par['dtmax'] = ui.inte.value()*us
+#    ui.data.par['dtmin'] = ui.intb.value()*us
     sys.exit(app.exec_())

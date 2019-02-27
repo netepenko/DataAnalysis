@@ -295,7 +295,7 @@ def retrieve(params, table, where):
     that parameters, 3 - condition to specify the line in table.
     Example: retrieve('Folder, File_Name', 'Shot_List', 'Shot = 29975')
     '''
-    conn = lite.connect('MainDB.db')
+    conn = lite.connect('../MainDB.db')
     #create query line
     qline='SELECT '+ params +' FROM ' + table + ' WHERE ' + where
     
@@ -307,7 +307,7 @@ def retrieve(params, table, where):
 
 #write to database
 def writetodb(params, table, where):
-    conn = lite.connect('MainDB.db')
+    conn = lite.connect('../MainDB.db')
     #create query line
     qline='UPDATE '+ table +' SET ' + params + ' WHERE ' + where
     
@@ -322,7 +322,7 @@ def prevshot(shot):
     shot number which exist in database before entered input shot number.
     Example: prevshot(29976)
     '''
-    conn = lite.connect('MainDB.db')
+    conn = lite.connect('../MainDB.db')
     (rowid,) = retrieve('ROWID', 'Shot_List', 'Shot = ' + str(shot))
     print rowid
     #create query line
@@ -340,7 +340,7 @@ def copyrow(table, where, sub):
     3 - what to change in copied raw.
     Example: copyrow('Raw_Fitting', 'Shot = 29975 AND Channel = 0', 'Channel = 1')
     '''
-    conn = lite.connect('MainDB.db')
+    conn = lite.connect('../MainDB.db')
     #create query line
     qline='INSERT INTO '+ table + ' SELECT * '+'FROM ' + table + ' WHERE ' + where
     with conn:

@@ -16,7 +16,7 @@ import os
 us=1.e6
 
 
-def fit_interval(self, tmin=None, tmax=None, plot=None):
+def fit_interval(self, tmin=None, tmax=None, plot=None, save=None):
         
         sl = fu.get_window_slice(tmin*us, self.td, tmax*us)
         V=self.Vps[sl]
@@ -26,7 +26,9 @@ def fit_interval(self, tmin=None, tmax=None, plot=None):
 #        Vline=np.array([]) #to save fitted line
 #        tline=np.array([]) #to save time point for fitted line (even though they should be same as td)
         
-        #plot=False
+        if len(V) > 1000000: 
+            print 'Too much to plot, will skip plotting.'
+            plot=False
         plot_s=False #do not plot if interval is not specified
         
         
@@ -85,7 +87,6 @@ def fit_interval(self, tmin=None, tmax=None, plot=None):
         
         
         imax_fit = imax[ipeak] #indeces of peaks to fit in raw data array 
-        
         # loop over the peaks
         Np = Vp.shape[0]
         t_start = time.clock()
@@ -110,14 +111,12 @@ def fit_interval(self, tmin=None, tmax=None, plot=None):
         # determine the fit groups
         fg, fw = fu.get_fit_groups_new(n_peaks_to_fit, imax_fit, 0., td)    
         fg_shift, fw = fu.get_fit_groups_new(n_peaks_to_fit, imax_fit, fw/2., td) 
-        
-        
         #if interval is specified for fitting
         if tmin and tmax:
             
             if (tmin*us>=self.par['dtmin']) and (tmax*us<=self.par['dtmax']) and tmin<tmax:
                 #find fit groups covering the interval
-                print td[imax_fit][0], td[imax_fit][-1], tmin*us, tmax*us
+#                print td[imax_fit][0], td[imax_fit][-1], tmin*us, tmax*us
                 inmin=np.where(td[imax_fit]>=tmin*us)[0][0] #index of first peak in fitting interval in time data
                 in_max=np.where(td[imax_fit]<=tmax*us)[0][-1] #index of tmax in time data
                 gtf=np.empty((0,2), int)    #list of groups in interval to fit
@@ -161,6 +160,10 @@ def fit_interval(self, tmin=None, tmax=None, plot=None):
         lims = []
         
         ifailed = 0
+        if plot:
+            pl.xlabel('t(us)')
+            pl.ylabel('V')
+            pl.title('Not shifted fitting groups')
         for i,ff in enumerate(fg[:]):
             N_fitted += fg_n_peaks[i]
             if (i%10 == 0) & (i!=0):
@@ -220,7 +223,8 @@ def fit_interval(self, tmin=None, tmax=None, plot=None):
 #                Vline=np.concatenate((Vline, line_shape(tt)))
 #                tline=np.concatenate((tline, tt+tpk))
 #            # plot fitting results for check if interval specified
-            if plot and len(tt)!=0:                    
+            
+            if plot and len(tt)!=0:
                 pl.plot(tt+tpk, Vt, '.', color = 'b' ) 
                 pl.plot(tt+tpk, line_shape(tt), color = 'm' )
                 
@@ -242,6 +246,7 @@ def fit_interval(self, tmin=None, tmax=None, plot=None):
             # free the arrays
             LF.free_all()
 
+        
         print ifailed, ' fits failed out of', i
 #        if tmin and tmax:
 #            return #don't do the second pass if checking the fitting in specified interval
@@ -322,10 +327,12 @@ def fit_interval(self, tmin=None, tmax=None, plot=None):
             
                 
             # plot result if interval specified
-            if plot_s & len(tt)!=0:                    
-                pl.plot(tt+tpk, Vt, '.', color = 'b')
-                pl.plot(tt+tpk, line_shape(tt), color = 'm')
-            
+            if plot_s:
+                pl.figure()
+                if len(tt)!=0:                    
+                    pl.plot(tt+tpk, Vt, '.', color = 'b')
+                    pl.plot(tt+tpk, line_shape(tt), color = 'm')
+                pl.title('Shifted fitting groups')
             # save the parameters
             # get the amplitudes the first 3 parameters are the bkg.
             fitted_A = np.copy(LF.a[bkg_len:])
@@ -362,7 +369,7 @@ def fit_interval(self, tmin=None, tmax=None, plot=None):
         #---------------------------------------------           
         # save the data as numpy compressed data files
         #---------------------------------------------
-        if not True: #save_results:
+        if not save:
             print 'no results saved!'
         else:
             # save the fitted data
