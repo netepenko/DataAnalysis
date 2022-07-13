@@ -95,7 +95,7 @@ def fit_shape(self, ts, Vt):
 def find_good_peaks(self, save):
         tmin = self.par['dtmin']
         tmax = self.par['dtmax']
-        print 'Looking for good peaks in interval (%f, %f)' %(tmin, tmax)
+        print('Looking for good peaks in interval (%f, %f)' %(tmin, tmax))
         sl = fu.get_window_slice(tmin, self.td, tmax)
         Vps=self.Vps[sl]
         td=self.td[sl]
@@ -113,11 +113,11 @@ def find_good_peaks(self, save):
         
         # number of maxima
         nmax = results[1]
-        print " found : ", nmax, " maxima"
+        print(" found : ", nmax, " maxima")
         imax = pmax[:nmax]
         # number of minima
         nmin = results[0]
-        print " found : ", nmin, " minima"
+        print(" found : ", nmin, " minima")
         #imin = pmin[:nmin]
         
         # get the indices of peaks higher then threshold, last peak removed
@@ -151,9 +151,9 @@ def find_good_peaks(self, save):
             
             i+=1
             if F.chi2 > self.chi2: 
-                print "bad peak"
+                print("bad peak")
                 if not (i < 1000 and i < len(tp)):
-                    print "Finding good peaks failed after %d attempts." %i
+                    print("Finding good peaks failed after %d attempts." %i)
                 continue 
         
             if save:
@@ -180,7 +180,7 @@ def find_good_peaks(self, save):
        
             j+=1
             
-        print i, j
+        print(i, j)
         # calculate the average of all renormalized peaks
         Vtotal=Vtotal/float(j)
         self.Vtotal = Vtotal

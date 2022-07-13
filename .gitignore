@@ -1,2 +1,4 @@
 /Analysis_Results/
 !.gitignore
+*.npz
+*.pyf

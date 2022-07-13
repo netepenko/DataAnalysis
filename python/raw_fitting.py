@@ -27,7 +27,7 @@ def fit_interval(self, tmin=None, tmax=None, plot=None, save=None):
 #        tline=np.array([]) #to save time point for fitted line (even though they should be same as td)
         
         if len(V) > 1000000: 
-            print 'Too much to plot, will skip plotting.'
+            print('Too much to plot, will skip plotting.')
             plot=False
         plot_s=False #do not plot if interval is not specified
         
@@ -62,12 +62,12 @@ def fit_interval(self, tmin=None, tmax=None, plot=None, save=None):
     
         ## number of maxima
         n_max = results[1]
-        print " found : ", n_max, " maxima"
+        print(" found : ", n_max, " maxima")
         imax = pmax[:n_max]
         
         ## number of minima
         nmin = results[0]
-        print " found : ", nmin, " minima"
+        print(" found : ", nmin, " minima")
         imin = pmin[:nmin]
         
         ## get the indices of peaks higher then threshold
@@ -137,7 +137,7 @@ def fit_interval(self, tmin=None, tmax=None, plot=None, save=None):
                 fg = gtf
                 fg_shift=gtfs #to fit only specified groups
             else:
-                print "Interval out of range or incorrect.", self.par['dtmin']/us, self.par['dtmax']/us
+                print("Interval out of range or incorrect.", self.par['dtmin']/us, self.par['dtmax']/us)
                 return
         
         # the number of peaks in each fit group
@@ -172,7 +172,7 @@ def fit_interval(self, tmin=None, tmax=None, plot=None, save=None):
                 t_diff = (t_current - t_start)
                 if (t_diff != 0.):
                     a_rate = float(N_fitted)/t_diff
-                print "Fit ", i, float(N_fitted)/Np*100., "% completed, time ", t_current, ' rate =', a_rate
+                print("Fit ", i, float(N_fitted)/Np*100., "% completed, time ", t_current, ' rate =', a_rate)
             # form a slice for the current peaks
             sl = slice(ff[0], ff[1]+1)
             # times for the peaks
@@ -214,7 +214,7 @@ def fit_interval(self, tmin=None, tmax=None, plot=None, save=None):
             chisq = LF.peak_fit( tt, Vt, np.ones_like(Vt), Vt.shape[0])
             if (chisq < 0.):
                 # failed fit
-                print ' fit ', i, 'failed, chisq = ', chisq
+                print(' fit ', i, 'failed, chisq = ', chisq)
                 ifailed += 1
                 LF.free_all()
                 continue
@@ -247,7 +247,7 @@ def fit_interval(self, tmin=None, tmax=None, plot=None, save=None):
             LF.free_all()
 
         
-        print ifailed, ' fits failed out of', i
+        print(ifailed, ' fits failed out of', i)
 #        if tmin and tmax:
 #            return #don't do the second pass if checking the fitting in specified interval
 #        
@@ -268,7 +268,7 @@ def fit_interval(self, tmin=None, tmax=None, plot=None, save=None):
         # fit parameters
         bkg_par_s = np.zeros( shape = (len(tp), bkg_len)) 
         
-        print 'new start time: ', t_start
+        print('new start time: ', t_start)
         # fit shifted set
         
         ifailed1 = 0
@@ -280,7 +280,7 @@ def fit_interval(self, tmin=None, tmax=None, plot=None, save=None):
                 t_diff = (t_current - t_start)
                 if (t_diff != 0.):
                     a_rate = float(N_fitted)/t_diff
-                print "Fit ", i, float(N_fitted)/Np*100., "% completed, time ", t_current, ' rate =', a_rate
+                print("Fit ", i, float(N_fitted)/Np*100., "% completed, time ", t_current, ' rate =', a_rate)
             # form a slice for the current peaks
             sl = slice(ff[0], ff[1]+1)
             # times for the peaks
@@ -320,7 +320,7 @@ def fit_interval(self, tmin=None, tmax=None, plot=None, save=None):
             chisq = LF.peak_fit( tt, Vt, np.ones_like(Vt), Vt.shape[0])
             if (chisq < 0.):
                 # failed fit
-                print ' fit ', i, 'failed, chisq = ', chisq
+                print(' fit ', i, 'failed, chisq = ', chisq)
                 ifailed1 += 1
                 LF.free_all()
                 continue
@@ -352,7 +352,7 @@ def fit_interval(self, tmin=None, tmax=None, plot=None, save=None):
             # free the arrays
             LF.free_all()
         
-        print ifailed1, ' fits failed out of', i
+        print(ifailed1, ' fits failed out of', i)
         
         
         #--------------------------------                        
@@ -370,7 +370,7 @@ def fit_interval(self, tmin=None, tmax=None, plot=None, save=None):
         # save the data as numpy compressed data files
         #---------------------------------------------
         if not save:
-            print 'no results saved!'
+            print('no results saved!')
         else:
             # save the fitted data
             o_file = self.var['res_dir'] + "fit_results_"+ str(self.par['shot']) + "_{0:5.3f}_{1:5.3f}_{2:d}.npz".format(tmin, tmax, self.par['channel'])
@@ -380,7 +380,7 @@ def fit_interval(self, tmin=None, tmax=None, plot=None, save=None):
                 o_file= self.var['res_dir'] + "fit_results_"+ str(self.par['shot']) + "_{0:5.3f}_{1:5.3f}_{2:d}".format(tmin, tmax, self.par['channel'])+time.strftime('%d_%m_%Y_%H_%M_%S')+".npz" 
             n_lines = tp.shape[0]
             np.savez_compressed(o_file, t=tp, V=Vp, A=A_fit, sig_A=sig_A_fit, bkg=bkg_par)
-            print "Wrote : ", n_lines, " lines to the output file"
+            print("Wrote : ", n_lines, " lines to the output file")
 
             #save fitted lines to the file
 #            np.savez_compressed(self.var['res_dir'] + "fit_line_"+ str(self.par['shot']) + ".npz", Vline=Vline, tline=tline)

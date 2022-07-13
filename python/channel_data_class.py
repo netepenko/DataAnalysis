@@ -38,72 +38,75 @@ convert = True
 us = 1.e6
 
 class channel_data():
-    
+
 
     # initialize the class instance
     def __init__(self, shot, channel):
-        wheredb = 'Shot = ' + str(shot) + ' AND Channel = ' + str(channel)
+        self.shot = shot
+        self.channel = channel
+        self.wheredb = 'Shot = ' + str(shot) + ' AND Channel = ' + str(channel)
         # frequently used string to retrieve data from database that indicates shot and chennel
-        
-        def read_database_par():
-            # read from database Raw_Fitting table interval limits for analysis
-            # if DB doesnt contain parameters for selected shot and channel copy
-            # them from another channel or even another shot
-    
-            (self.par['exp_dir'], self.par['exp_file']) = db.retrieve(
-                    'Folder, File_Name', 'Shot_List', 'Shot = ' + str(shot))
-            
-            (self.par['dtmin'], self.par['dtmax']) = np.asarray(
-                    db.retrieve('dtmin, dtmax', 'Raw_Fitting', wheredb))*us
-            # read other parameters
-            
-            (self.par['poly_order'], self.par['n_peaks_to_fit']) = db.retrieve(
-                    'poly_order, n_peaks_to_fit', 'Raw_Fitting', wheredb)
-            (self.par['add_pulser'], self.par['pulser_rate'],
-             self.par['P_amp']) = db.retrieve(
-                     'add_pulser, pulser_rate, P_amp', 'Raw_Fitting', wheredb)
-            (self.par['use_threshold'], self.par['Vstep'],
-             self.par['Vth']) = db.retrieve(
-                     'use_threshold, Vth, Vstep', 'Raw_Fitting', wheredb)
-    
-            # laod parameters for finding peaks
-            (self.par['n_sig_low'], self.par['n_sig_high'],
-             self.par['n_sig_boundary']) = db.retrieve(
-                     'n_sig_low, n_sig_high, n_sig_boundary',
-                     'Raw_Fitting', wheredb)
-    
-            # n_sig_high not used anywhere
-            self.par['sig'] = db.retrieve('sig', 'Raw_Fitting', wheredb)[0]*us
-    
-            # read peak shape parameters from database Peak_Sampling table
-            (decay_time, rise_time) = db.retrieve(
-                    'decay_time, rise_time', 'Peak_Sampling', wheredb)
-            self.par['decay_time'] = decay_time*us  # converted to microseconds
-            self.par['rise_time'] = rise_time*us  # converted to microseconds
-            #self.par['position'] = position*us  # converted to microseconds
-    
-           
-        # -------- load parameters-------
         self.par = {}  # parameters dictionarry initialization
         self.var = {}  # class variables dictionarry
-
         self.par['shot'] = shot
         self.par['channel'] = channel
 
 
-        
+    def read_database_par(self):
+        # read from database Raw_Fitting table interval limits for analysis
+        # if DB doesnt contain parameters for selected shot and channel copy
+        # them from another channel or even another shot
+        shot = self.shot
+        wheredb = self.wheredb
+        (self.par['exp_dir'], self.par['exp_file']) = db.retrieve(
+                'Folder, File_Name', 'Shot_List', 'Shot = ' + str(shot))
+
+        (self.par['dtmin'], self.par['dtmax']) = np.asarray(
+                db.retrieve('dtmin, dtmax', 'Raw_Fitting', wheredb))*us
+        # read other parameters
+
+        (self.par['poly_order'], self.par['n_peaks_to_fit']) = db.retrieve(
+                'poly_order, n_peaks_to_fit', 'Raw_Fitting', wheredb)
+        (self.par['add_pulser'], self.par['pulser_rate'],
+         self.par['P_amp']) = db.retrieve(
+                 'add_pulser, pulser_rate, P_amp', 'Raw_Fitting', wheredb)
+        (self.par['use_threshold'], self.par['Vstep'],
+         self.par['Vth']) = db.retrieve(
+                 'use_threshold, Vth, Vstep', 'Raw_Fitting', wheredb)
+
+        # laod parameters for finding peaks
+        (self.par['n_sig_low'], self.par['n_sig_high'],
+         self.par['n_sig_boundary']) = db.retrieve(
+                 'n_sig_low, n_sig_high, n_sig_boundary',
+                 'Raw_Fitting', wheredb)
+
+        # n_sig_high not used anywhere
+        self.par['sig'] = db.retrieve('sig', 'Raw_Fitting', wheredb)[0]*us
+
+        # read peak shape parameters from database Peak_Sampling table
+        (decay_time, rise_time) = db.retrieve(
+                'decay_time, rise_time', 'Peak_Sampling', wheredb)
+        self.par['decay_time'] = decay_time*us  # converted to microseconds
+        self.par['rise_time'] = rise_time*us  # converted to microseconds
+        #self.par['position'] = position*us  # converted to microseconds
+
+
+        # -------- load parameters-------
+
+
+
         try:
             read_database_par()
         except:
-            
-            print "Couldn't read parameters for Shot %d Channel %d" %(shot, channel)
-            
-            shot_cp = self.par['shot']   
+
+            print("Couldn't read parameters for Shot %d Channel %d" %(shot, channel))
+
+            shot_cp = self.par['shot']
             ch_cp = self.par['channel'] - 1  # copy param from prev channel
-            
+
             wheredb_cp = ('Shot = ' + str(shot_cp) +
                           ' AND Channel = ' + str(ch_cp))
-            
+
             try:
                 db.copyrow('Raw_Fitting', wheredb_cp, 'Shot = ' + str(shot) +
                            ', Channel = ' + str(channel))
@@ -113,9 +116,9 @@ class channel_data():
                            'Shot = ' + str(shot) +
                            ', Channel = ' + str(channel))
                 read_database_par()
-                print 'Coppied parameters from previous channel'
+                print('Coppied parameters from previous channel')
             except:
-                print "Couldn't copy paramateres from previous channel, will try the previous shot!"
+                print("Couldn't copy paramateres from previous channel, will try the previous shot!")
                 #try to copy from previous shot in shotlist table
                 try:
                     shot_cp = db.prevshot(self.par['shot'])   # copy param from previous shot
@@ -130,23 +133,23 @@ class channel_data():
                                'Shot = ' + str(shot) +
                                ', Channel = ' + str(channel))
                     read_database_par()
-                    print 'Coppied parameters from previous shot.'
+                    print('Coppied parameters from previous shot.')
                 except:
-                    print "Couldn't copy parameters from previous shot. Input parameters manually in DB"
+                    print("Couldn't copy parameters from previous shot. Input parameters manually in DB")
                     return
 
-        
+
         #  ------------assign class variables -------------
         # order for background fit and set vary codes variables
         self.var['vary_codes_bkg'] = (self.par['poly_order'] + 1)*[1]
         self.var['bkg_len'] = len(self.var['vary_codes_bkg'])
         self.var['peak_num'] = 1  # running number for peak selection
         self.var['data_plot'] = None
-        
+
         # assign directories for results (edit later for good tree structure!!)
         self.var['res_dir'] = ('../Analysis_Results/' +
                                str(shot) + '/Raw_Fitting/')
-        print 'Analysis results will be placed in: ', self.var['res_dir']
+        print('Analysis results will be placed in: ', self.var['res_dir'])
 
         # --------------------------------
         # --------------------------------
@@ -154,7 +157,7 @@ class channel_data():
 
         f = h5py.File(self.par['exp_dir'] + self.par['exp_file'], 'r')
         data_root = 'wfm_group0/traces/trace' + str(self.par['channel']) + '/'
-        print "-----------------------Getting data------------------------"
+        print("-----------------------Getting data------------------------")
 
         # load time information
         t0 = f[data_root + 'x-axis'].attrs['start']*us
@@ -164,7 +167,7 @@ class channel_data():
 
         # get the y dataset length
         nall = f[data_root + 'y-axis/data_vector/data'].shape[0]
-        
+
         # make time array based on number of points in y data
         tall = t0 + dt*np.arange(nall, dtype=float)
 
@@ -179,13 +182,13 @@ class channel_data():
 
         # calculate voltage for dataset
         V = scale[0] + scale[1]*ydata
-        print "-----------------------Data loaded-------------------------"
+        print("-----------------------Data loaded-------------------------")
 
         # save data for future use
         self.td = tall  # time data (microseconds) in analysis interval
         self.Vps = V  # voltage data
         self.dt = dt  # time step (microseconds)
-        
+
         # testing of fitting pulser
 #        self.td = self.td[0:1000000]
 #        self.Vps = np.zeros_like(self.td)
@@ -196,13 +199,13 @@ class channel_data():
 
 #   plotting of raw data without overloading the figure
 # (skipping some data points according to maximum allowed points on plot)
-    
+
 
     def plot_raw(self, xmin=None, xmax=None):
 
         V = self.Vps
         t = self.td
-        
+
         if xmin and xmax:
             interval = np.where((xmin < t) & (t < xmax))
             t = t[interval]
@@ -252,7 +255,7 @@ class channel_data():
         # db.writetodb('add_pulser = "True"', 'Raw_Fitting',
         # 'Shot = '+str(self.par['shot'])+' AND Channel = '
         # +str(self.par['channel']))
-        print 'Pulser signal added to data.'
+        print('Pulser signal added to data.')
 
 # pulling methods from separate scripts, to make files shorter and easier to edit
 channel_data.find_good_peaks = peak_sampling.find_good_peaks

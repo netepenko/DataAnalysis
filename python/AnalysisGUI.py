@@ -312,7 +312,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
     def plotAll(self):
         files = G.glob('../Analysis_Results/%d/Raw_Fitting/*.npz' %self.Shot1.value())
         for fitres in files:
-            print fitres[fitres.index('z')-4]
+            print(fitres[fitres.index('z')-4])
             plov = rp(self.Shot1.value(), int(fitres[fitres.index('z')-4]), fitres)
             plov.par['sig_ratio'] = self.sigRat.value()
             plov.par['time_slice_width'] = self.tsl.value()
