@@ -2,3 +2,7 @@
 !.gitignore
 *.npz
 *.pyf
+*.so
+*.dSYM
+.DS_Store
+

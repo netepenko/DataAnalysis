@@ -1,7 +1,7 @@
 ! f90 version
 !
 ! the best in the end it to make it into a module
-
+! 
 ! line shape fitting for proton peaks, fit multiple peaks
 
 
