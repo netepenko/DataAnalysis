@@ -13,6 +13,8 @@ Modified Jul 7 2022
 import LT.box as B
 import numpy as np
 import os
+import time
+import pickle
 
 from . import database_operations as db
 from . import utilities as UT
@@ -34,22 +36,34 @@ def slice_array(x, dx):
     return x_slice, np.apply_along_axis(cut, 1, sl)
 
 
-def get_dbdata(dbfile, q_what, q_table, q_where ):
-    result = []
-    try:
-        result = db.retrieve(dbfile, q_what, q_table, q_where)
-    except Exception as err:
-        print(f'Problem getting {q_what} from table {q_table} where {q_where}: {err}')
-    if result == []:
-        print('No results getting  {q_what} from table {q_table} where {q_where}')
+def load_from_file(f):
+    """
+    load a pickled  object from file 
 
+    Parameters
+    ----------
+    f : String
+        filename.
+
+    Returns
+    -------
+    some object
+        the object stored in the file.
+
+    """
+    try:
+        return pickle.load(open(f, "rb"))
+    except Exception as err:
+        print(f'Could load pickle file : {f} -> {err}')
+        
+    
 class analysis_data:
 
-    def __init__(self, rp):
-        self.rp = rp        
-        t_offset = rp.par['t_offset'] #cdata.par.get_value('t_offset')*us
+    def __init__(self, ra):
+        self.ra = ra        
+        t_offset = ra.par['t_offset'] #cdata.par.get_value('t_offset')*us
         # get directories
-        Afit_name = rp.var['Afit_name']
+        Afit_name = ra.var['Afit_name']
 
         # load data (faster loading then from txt)
         d = np.load(Afit_name)
@@ -59,16 +73,24 @@ class analysis_data:
         Ar = d['A']       # fitted PH
         dAr = d['sig_A']  # uncertainty in fit
         
+        self.tr = tr
         self.Vpr = Vpr
         self.Ar = Ar
         self.dAr = dAr
 
+        self.select_signals()
+
+    def select_signals(self):
+        tr = self.tr
+        Ar = self.Ar
+        dAr  = self.dAr
+        Vpr = self.Vpr
         # positive signals
         pa = Ar>0.
         self.pa = pa
         r = np.abs(dAr[pa]/Ar[pa])
         # cut on error ratio
-        self.r_cut_off = rp.par['sig_ratio']
+        self.r_cut_off = self.ra.par['sig_ratio']
         # this is for good events
         gr = r < self.r_cut_off
         self.gr = gr
@@ -91,6 +113,7 @@ class rate_analysis:
         #frequently used variable to retrieve data from database, indicates shot and chennel
         if Version is None:
             wheredb =  f'Shot = {shot} AND Channel = {channel}'
+            (Version, ) = db.retrieve(dbfile, 'Version','Rate_Analysis', wheredb)[0]
         else:
             wheredb =  f'Shot = {shot} AND Channel = {channel} AND Version = {Version}'
 
@@ -100,26 +123,27 @@ class rate_analysis:
 
         self.par['shot']=shot
         self.par['channel']=channel
+        self.par['version'] = Version
 
-        (time_slice_width,) = db.retrieve(dbfile, 'time_slice_width','Rate_Plotting', wheredb)[0]                
+        (time_slice_width,) = db.retrieve(dbfile, 'time_slice_width','Rate_Analysis', wheredb)[0]                
         self.par['time_slice_width']=time_slice_width
 
 
-        (h_min, h_max, h_bins) = db.retrieve(dbfile,'h_min, h_max, h_bins', 'Rate_Plotting', wheredb)[0]
+        (h_min, h_max, h_bins) = db.retrieve(dbfile,'h_min, h_max, h_bins', 'Rate_Analysis', wheredb)[0]
         self.par['h_min']= h_min
         self.par['h_max']=h_max
         h_bins=int(h_bins)
         self.par['h_bins']=h_bins
 
 
-        (draw_p, draw_t, draw_sum) = db.retrieve(dbfile,'draw_p, draw_t, draw_sum', 'Rate_Plotting', wheredb)[0]
+        (draw_p, draw_t, draw_sum) = db.retrieve(dbfile,'draw_p, draw_t, draw_sum', 'Rate_Analysis', wheredb)[0]
         self.par['draw_p']=UT.Bool(draw_p)
         self.par['draw_t']=UT.Bool(draw_t)
         self.par['draw_sum']=UT.Bool(draw_sum)
 
 
         (p_min, p_max, t_min, t_max, pul_min, pul_max) = db.retrieve(dbfile,'p_min, p_max, t_min, t_max, \
-        pul_min, pul_max', 'Rate_Plotting', wheredb)[0]
+        pul_min, pul_max', 'Rate_Analysis', wheredb)[0]
         self.par['p_min']=p_min
         self.par['p_max']=p_max
         self.par['t_min']=t_min
@@ -128,9 +152,7 @@ class rate_analysis:
         self.par['pulser_max'] = pul_max
 
 
-        (A_init, sig_init, sig_ratio)=db.retrieve(dbfile,'A_init, sig_init, sig_ratio', 'Rate_Plotting', wheredb)[0]
-        self.par['A_init']=A_init
-        self.par['sig_init']=sig_init
+        (sig_ratio)=db.retrieve(dbfile,'sig_ratio', 'Rate_Analysis', wheredb)[0]
         self.par['sig_ratio']=sig_ratio
 
 
@@ -154,7 +176,7 @@ class rate_analysis:
         new_dir = '/'.join(dir_name.split(os.path.sep)[:-1])
         # setup output directory name
         # set output file name
-        self.var['of_name'] = f'{new_dir}/Rate_Plotting/rate_results_{shot}_{dtmin/us:5.3f}_{dtmax/us:5.3f}_{channel:d}.npz'
+        self.var['of_name'] = f'{new_dir}/Rate_Analysis/rate_results_{shot}_{dtmin/us:5.3f}_{dtmax/us:5.3f}_{channel:d}_{Version:d}.npz'
         self.h2 = None
         self.h2p = None
 
@@ -208,7 +230,7 @@ class rate_analysis:
         B.pl.xlim((self.par['dtmin']/us, self.par['dtmax']/us))
         B.pl.show()
         """
-        B.pl.savefig('../Analysis_Results/%d/Rate_Plotting/Rate_%s.png' %(self.par['shot'],self.var['Afit_name'][-16:-6]))
+        B.pl.savefig('../Analysis_Results/%d/Rate_Analysis/Rate_%s.png' %(self.par['shot'],self.var['Afit_name'][-16:-6]))
         """
 
 
@@ -394,16 +416,61 @@ class rate_analysis:
 
 
         # write results
+    def save_rates(self):
         """
+        save the data as numpy compressed data files at the locations indicated by
+        in the data base
 
-#        if os.path.isfile(o_file):
-#            inp = raw_input("Do you want to overwrite the results file? (y)es or (n)o: ")
-#            if inp == "yes" or inp == "y":
-#               os.remove(o_file)
-#               print 'Old file removed.'
-#            elif inp == "no" or inp == "n":
-#               return
+        Returns
+        -------
+        None.
 
-        np.savez_compressed(o_file, t=np.asarray(slice_t)/us, Ap=np.asarray(A_sp)/dt*us, dAp=np.asarray(dA_sp)/dt*us, At=np.asarray(A_st)/dt*us,
-                                dAt=np.asarray(dA_st)/dt*us, A=np.asarray(A_t)/dt*us, dA=np.asarray(dA_t)/dt*us)
+        """   
+        dt = self.par['time_slice_width']
+        o_file = self.var['of_name']
+        
+        # check the directory exists, if not create it
+        if  not os.path.exists(os.path.dirname(o_file)):
+            os.makedirs(os.path.dirname(o_file))
+        #
+        if os.path.isfile(o_file):
+            fn = os.path.splitext(o_file)
+            o_file= fn[0] + '_' + time.strftime('%d_%m_%Y_%H_%M_%S') + fn[1]         
+        n_lines = self.slice_t.shape[0]
+        np.savez_compressed(o_file, t=self.slice_t/us, 
+                            Ap=self.A_sp/dt, dAp=self.dA_sp/dt, 
+                            At=self.A_st/dt, dAt=self.dA_st/dt, 
+                            A=self.A_t/dt, dA=self.dA_t/dt)
+        print("Wrote : ", n_lines, " lines to the output file: ", o_file)
+        self.last_saved_in = o_file
+        # store the file name in the database
+        q_table  = 'Rate_Analysis'
+        q_where = f'Shot = {self.par["shot"]} AND Channel = {self.par["channel"]} AND Version = {self.par["version"]}'
+        q_what = f'file_name = "{o_file}"'
+        db.writetodb(self.dbfile, q_what, q_table, q_where)        
+
+    def save_myself(self):
         """
+        Save the current instance of this class. This should only be used for debugging as it creates
+        Very large files
+
+        Returns
+        -------
+        None.
+
+        """
+        # save the entire object
+        o_dir = os.path.dirname(self.var['of_name']) + '/'
+        shot = self.par['shot']
+        channel = self.par['channel']
+        version = self.par['version']
+        
+        o_file = f'{o_dir}/rate_analysis_{shot}_{channel:d}_{version:d}_all.pkl'
+        if  not os.path.exists(os.path.dirname(o_file)):
+            os.makedirs(os.path.dirname(o_file))
+        if os.path.isfile(o_file):
+            fn = os.path.splitext(o_file)
+            o_file= fn[0] + '_' + time.strftime('%d_%m_%Y_%H_%M_%S') + fn[1] 
+        print(f'Write pickle file : {o_file}')
+        with open(o_file, "wb") as file_:
+            pickle.dump(self, file_)        

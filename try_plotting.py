@@ -23,6 +23,7 @@ us=1.e6 #conversion to microseconds constant
 dbfile = 'New_MainDB1.db'
 shot = 29880
 channel = 2
+
 ra = rac.rate_analysis(dbfile, shot, channel)
 ra.time_slice_data()
 ra.make_2d_histo()
@@ -35,3 +36,7 @@ B.pl.figure(figsize = (16,4))
 
 # use keywords vmin, vmax to set z-range
 ra.plot_2d(raw = True)
+
+#%% save rate results
+
+ra.save_rates()

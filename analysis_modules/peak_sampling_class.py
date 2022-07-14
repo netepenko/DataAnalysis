@@ -40,7 +40,7 @@ Np = 12  # number of sampled peaks
 
 class peak_sampling:
     
-    def __init__(self, channel_data, chi2, psize = None, plot_single_peaks = True, plot_common_peak = True, rise_time = None, decay_time = None):
+    def __init__(self, channel_data, chi2 = None, psize = None, plot_single_peaks = True, plot_common_peak = True, rise_time = None, decay_time = None):
         """
         peak sampling
 
@@ -68,6 +68,12 @@ class peak_sampling:
 
         """
         self.channel_data = channel_data
+        
+        if chi2 is None:
+            self.chi2 = self.channel_data.par['Chi2']
+        else:
+            self.chi2 = chi2    
+        
         if psize is None:
             self.psize = self.channel_data.psize
         else:
@@ -88,9 +94,7 @@ class peak_sampling:
         self.plot_single_peaks = plot_single_peaks
         self.plot_common_peak = plot_common_peak
         self.good_peak_times = []
-        self.chi2 = chi2
         
-
     def load_times(self, dbfile):
         """
         load time slices for model peaks from the data base
@@ -160,7 +164,7 @@ class peak_sampling:
                
         return F, alpha(), beta(), H(), offset(), x0()
         
-    def fit_peaks(self, t_slices, save_fit = True, save_slices = True):
+    def fit_peaks(self, t_slices = None, save_fit = True, save_slices = True):
         """
         normalize and fit peaks in within the time slices t_slice
         
@@ -170,8 +174,8 @@ class peak_sampling:
 
         Parameters
         ----------
-        t_slices : numpy array (float, shape = (n,2))
-            DESCRIPTION.
+        t_slices : numpy array (float, shape = (n,2)), optional
+            array of time slices for good peaks (normally calculated in find_good_peaks)
         save_fit : Bool, optional
             save the fit results in class. The default is True.
         save_slices : Bool, optional
@@ -195,6 +199,10 @@ class peak_sampling:
         
 
         """
+        # the the stored values by default
+        if t_slices is None:
+            t_slices = self.good_peak_times
+        
         # create common array for peak data
         Vtotal=np.zeros(int(self.psize*(self.rise_time + self.decay_time)/self.channel_data.dt) )
         counters = np.zeros(int(self.psize*(self.rise_time + self.decay_time)/self.channel_data.dt) )
@@ -262,23 +270,24 @@ class peak_sampling:
         # all done               
     
     
-    def find_good_peaks(self, tmin, tmax, Vstep, Vthres):
+    def find_good_peaks(self, tmin = None, tmax = None, Vstep = None, Vthres = None):
         """
          search for good model peaks between tmin and tmax.
          
          - the data are searched to find Np good peaks
          - once found the time slices are stored
          - the peaks are fitted and a common peak shape is determined and saved
+         - default values are taken from database
 
         Parameters
         ----------
-        tmin : float
+        tmin : float, optional
             minimum time.
-        tmax : float
+        tmax : float, optional
             maximum time.
-        Vstep : float
+        Vstep : float, optional
             Voltage step for peak finding algorithm.
-        Vthres : float
+        Vthres : float, optional
             Threshold value for peak height.
 
         Returns
@@ -286,8 +295,18 @@ class peak_sampling:
         None.
 
         """
-        #dtmin, dtmax time interval for finding good nodel peaks
+        # get default values from database
                     
+        if tmin is None:
+            tmin = self.channel_data.par['ps_tmin']
+        if tmax is None:
+            tmax = self.channel_data.par['ps_tmax']
+        if Vstep is None:
+            Vstep = self.channel_data.par['ps_Vstep']
+        if Vthres is None:
+            Vthres = self.channel_data.par['ps_Vth']
+        
+       
         print('Looking for good peaks in interval (%f, %f)' %(tmin, tmax))
         
         sl = UT.get_window_slice(tmin, self.channel_data.td, tmax)

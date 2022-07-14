@@ -82,9 +82,9 @@ def create(db_file):
     raw_fitting = db_table_data('Raw_Fitting', raw_fit_fields, raw_fit_types, [raw_fit_values], special = 'PRIMARY KEY (Shot, Channel, Version)')  # if only 1 row of values enter in backets
 
     # peak sampling
-    peak_sampling_fields = ['Shot', 'Channel', 'Version',               'Comment', 'decay_time', 'rise_time', 'position', 'n_samp', 'n_max', 'n_below', 'n_above']
-    peak_sampling_types = ['INT not NULL','INT not NULL','INT not NULL', 'TEXT',   'REAL',       'REAL',      'REAL',     'INT',    'INT',    'INT',     'INT']
-    peak_sampling_values = [29975,          0,             0,        '"No Comment"', 200e-9,      100e-9,      350e-9,    120,       20,      15,        50]
+    peak_sampling_fields = ['Shot', 'Channel', 'Version',               'Comment', 'Vstep', 'Vth', 'Chi2', 'tmin', 'tmax', 'decay_time', 'rise_time', 'position', 'n_samp', 'n_max', 'n_below', 'n_above']
+    peak_sampling_types = ['INT not NULL','INT not NULL','INT not NULL', 'TEXT',   'REAL',  'REAL', 'REAL', 'REAL', 'REAL', 'REAL',       'REAL',      'REAL',     'INT',    'INT',    'INT',     'INT']
+    peak_sampling_values = [29975,          0,             0,        '"No Comment"', .1,     .3,     .1,     .1,    .15,    200e-9,      100e-9,      350e-9,    120,       20,      15,        50]
 
 
     peak_sampling_fields += ['b1',  'e1',  'b2',  'e2',  'b3',  'e3',  'b4',  'e4',  'b5',  'e5',  'b6',  'e6']
@@ -98,15 +98,15 @@ def create(db_file):
     peak_sampling =db_table_data('Peak_Sampling', peak_sampling_fields, peak_sampling_types, [peak_sampling_values], special = 'PRIMARY KEY (Shot, Channel, Version)')
 
     # rate plotting
-    rate_plotting_fields = ['Shot', 'Channel', 'Version',               'Comment', 'time_slice_width', 'h_min', 'h_max' , 'h_bins', 'draw_p', 'draw_t', 'draw_sum' ]
-    rate_plotting_types = ['INT not NULL','INT not NULL','INT not NULL', 'TEXT',   'REAL',             'REAL',  'REAL',   'INT',   'TEXT',   'TEXT',   'TEXT']
-    rate_plotting_values = [29975,          0,             0,        '"No Comment"', 1.e-3,            0.,      1.4,      160,      '"True"',  '"False"',  '"False"']
+    Rate_Analysis_fields = ['Shot', 'Channel', 'Version',               'Comment', 'time_slice_width', 'h_min', 'h_max' , 'h_bins', 'draw_p', 'draw_t', 'draw_sum' ]
+    Rate_Analysis_types = ['INT not NULL','INT not NULL','INT not NULL', 'TEXT',   'REAL',             'REAL',  'REAL',   'INT',   'TEXT',   'TEXT',   'TEXT']
+    Rate_Analysis_values = [29975,          0,             0,        '"No Comment"', 1.e-3,            0.,      1.4,      160,      '"True"',  '"False"',  '"False"']
 
-    rate_plotting_fields+= ['p_min', 'p_max', 't_min', 't_max', 'pul_min', 'pul_max', 'A_init', 'sig_init', 'sig_ratio']
-    rate_plotting_types += ['REAL',  'REAL',  'REAL',  'REAL',  'REAL',    'REAL',    'REAL',   'REAL',     'REAL'  ]
-    rate_plotting_values += [0.6,     0.8,    0.3,      0.5,     0.9,        1.2,         10,     0.2,        100]
+    Rate_Analysis_fields+= ['p_min', 'p_max', 't_min', 't_max', 'pul_min', 'pul_max',  'sig_ratio']
+    Rate_Analysis_types += ['REAL',  'REAL',  'REAL',  'REAL',  'REAL',    'REAL',       'REAL'  ]
+    Rate_Analysis_values += [0.6,     0.8,    0.3,      0.5,     0.9,        1.2,        100]
 
-    rate_plotting = db_table_data('Rate_Plotting', rate_plotting_fields, rate_plotting_types, [rate_plotting_values], special = 'PRIMARY KEY (Shot, Channel, Version)')
+    Rate_Analysis = db_table_data('Rate_Analysis', Rate_Analysis_fields, Rate_Analysis_types, [Rate_Analysis_values], special = 'PRIMARY KEY (Shot, Channel, Version)')
 
 
     comb_rates_fields = ['Shot', 'Channels', 't_min', 't_max', 'A_min', 'A_max', 'd_time', 'view_dir', 'view_names', 'r_min', 'r_max', 'use_all_variables', 'calc_rate', 'model', 'Comment']
@@ -125,8 +125,8 @@ def create(db_file):
         peak_sampling.create_table(conn)
         peak_sampling.insert_into(conn)
         #
-        rate_plotting.create_table(conn)
-        rate_plotting.insert_into(conn)
+        Rate_Analysis.create_table(conn)
+        Rate_Analysis.insert_into(conn)
         #
         comb_rates.create_table(conn)
         comb_rates.insert_into(conn)

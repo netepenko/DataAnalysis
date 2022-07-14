@@ -2,7 +2,7 @@
 
 # modules
 
-OBJ = ffind_peaks.o lfitm1.o
+OBJ = ffind_peaks2.o lfitm1.o
 
 INCLUDE    = ./
 

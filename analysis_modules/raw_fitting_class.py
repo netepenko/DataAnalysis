@@ -637,12 +637,18 @@ class raw_fitting:
         -------
         None.
 
-        """          
-        o_file = self.channel_data.var['res_dir'] + "fit_results_"+ str(self.channel_data.par['shot']) + "_{0:5.3f}_{1:5.3f}_{2:d}.npz".format(self.tmin, self.tmax, self.channel_data.par['channel'])
+        """    
+        o_dir = self.channel_data.var['res_dir']
+        shot = self.channel_data.par['shot']
+        channel = self.channel_data.par['channel']
+        version = self.channel_data.par['version']
+        
+        o_file = f'{o_dir}/fit_results_{shot}_{channel:d}_{version:d}_{self.tmin:5.3f}_{self.tmax:5.3f}.npz'
         if  not os.path.exists(os.path.dirname(o_file)):
             os.makedirs(os.path.dirname(o_file))
         if os.path.isfile(o_file):
-            o_file= self.channel_data.var['res_dir'] + "fit_results_"+ str(self.channel_data.par['shot']) + "_{0:5.3f}_{1:5.3f}_{2:d}".format(self.tmin, self.tmax, self.channel_data.par['channel'])+time.strftime('%d_%m_%Y_%H_%M_%S')+".npz" 
+            fn = os.path.splitext(o_file)
+            o_file= fn[0] + '_' + time.strftime('%d_%m_%Y_%H_%M_%S') + fn[1] 
         n_lines = self.tp.shape[0]
         np.savez_compressed(o_file, t=self.tp, V=self.Vp, A=self.A_fit, sig_A=self.sig_A_fit, bkg=self.bkg_par)
         print("Wrote : ", n_lines, " lines to the output file: ", o_file)

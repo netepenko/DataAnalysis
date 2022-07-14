@@ -52,6 +52,7 @@ class channel_data():
         self.var = {}  # class variables dictionarry
         self.par['shot'] = shot
         self.par['channel'] = channel
+        self.par['version'] = Version
         self.psize = 5
 
 
@@ -100,6 +101,14 @@ class channel_data():
         decay_time, rise_time = db.retrieve(dbfile, 'decay_time, rise_time', 'Peak_Sampling', wheredb_version)[0]
         self.par['decay_time'] = decay_time*us  # converted to microseconds
         self.par['rise_time'] = rise_time*us  # converted to microseconds
+        
+        (Vstep, Vth, Chi2, tmin, tmax) = db.retrieve(dbfile, 'Vstep, Vth, Chi2, tmin, tmax', 'Peak_Sampling', wheredb_version)[0]
+        
+        self.par['ps_Vstep'] = Vstep
+        self.par['ps_Vth'] = Vth
+        self.par['Chi2'] = Chi2
+        self.par['ps_tmin'] = tmin*us
+        self.par['ps_tmax'] = tmax*us
         
         # order for background fit and set vary codes variables
         self.var['vary_codes_bkg'] = (self.par['poly_order'] + 1)*[1]
@@ -192,7 +201,10 @@ class channel_data():
             interval = np.where((xmin < t) & (t < xmax))
             t = t[interval]
             V = V[interval]
-
+        else:
+            interval = np.where((self.par['dtmin'] < t) & (t < self.par['dtmax']))
+            t = t[interval]
+            V = V[interval]            
         data_plotting.plot_data(t, V, '.', color='blue')
 
 # add pulser signals to check fit performance
