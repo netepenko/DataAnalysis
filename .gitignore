@@ -3,6 +3,6 @@
 *.npz
 *.pyf
 *.so
-*.dSYM
+*.o
+/analysis_modules/*.dSYM
 .DS_Store
-
