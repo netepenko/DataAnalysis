@@ -4,5 +4,5 @@
 *.pyf
 *.so
 *.o
-/analysis_modules/*.dSYM
+/analysis_modules/*.dSYM/*
 .DS_Store
