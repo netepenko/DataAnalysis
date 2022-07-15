@@ -1,8 +1,10 @@
 /Analysis_Results/
 !.gitignore
 *.npz
+*.pkl
 *.pyf
 *.so
 *.o
+*.mod
 /analysis_modules/*.dSYM/*
 .DS_Store
