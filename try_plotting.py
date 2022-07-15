@@ -40,3 +40,7 @@ ra.plot_2d(raw = True)
 #%% save rate results
 
 ra.save_rates()
+
+#%% save the entire object (only for testing)
+
+ra.save_myself()
