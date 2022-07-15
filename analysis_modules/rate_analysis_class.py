@@ -109,13 +109,14 @@ class analysis_data:
         
 class rate_analysis:
 
-    def __init__(self, dbfile, shot, channel, Afit_file = None, Version = None):
+    def __init__(self, dbfile, shot, channel, Afit_file = None, version = None):
         #frequently used variable to retrieve data from database, indicates shot and chennel
-        if Version is None:
+        # if version is not specified take the highest
+        if version is None:
             wheredb =  f'Shot = {shot} AND Channel = {channel}'
-            (Version, ) = db.retrieve(dbfile, 'Version','Rate_Analysis', wheredb)[0]
-        else:
-            wheredb =  f'Shot = {shot} AND Channel = {channel} AND Version = {Version}'
+            (version, ) = db.retrieve(dbfile, 'Version','Rate_Analysis', wheredb)[-1]
+            
+        wheredb =  f'Shot = {shot} AND Channel = {channel} AND Version = {version}'
 
         self.dbfile = dbfile
         self.par={}
@@ -123,7 +124,7 @@ class rate_analysis:
 
         self.par['shot']=shot
         self.par['channel']=channel
-        self.par['version'] = Version
+        self.par['version'] = version
 
         (time_slice_width,) = db.retrieve(dbfile, 'time_slice_width','Rate_Analysis', wheredb)[0]                
         self.par['time_slice_width']=time_slice_width
@@ -160,7 +161,13 @@ class rate_analysis:
         self.par['t_offset']=t_offset
 
 
-        (dtmin,dtmax) = np.asarray(db.retrieve(dbfile,'dtmin, dtmax', 'Raw_Fitting', wheredb)[0])*us
+        ret_val = db.retrieve(dbfile,'dtmin, dtmax', 'Raw_Fitting', wheredb)
+        if ret_val == []:
+            print(f'No data from : {wheredb}, check if record exists')
+            print('----> rate_analysis initialization not complete ! <----')
+            return
+        
+        (dtmin,dtmax) = np.asarray(ret_val[0])*us
         self.par['dtmin'] = dtmin
         self.par['dtmax'] = dtmax
 
@@ -176,7 +183,7 @@ class rate_analysis:
         new_dir = '/'.join(dir_name.split(os.path.sep)[:-1])
         # setup output directory name
         # set output file name
-        self.var['of_name'] = f'{new_dir}/Rate_Analysis/rate_results_{shot}_{dtmin/us:5.3f}_{dtmax/us:5.3f}_{channel:d}_{Version:d}.npz'
+        self.var['of_name'] = f'{new_dir}/Rate_Analysis/rate_results_{shot}_{dtmin/us:5.3f}_{dtmax/us:5.3f}_{channel:d}_{version:d}.npz'
         self.h2 = None
         self.h2p = None
 
@@ -416,7 +423,7 @@ class rate_analysis:
 
 
         # write results
-    def save_rates(self):
+    def save_rates(self, new_row = False):
         """
         save the data as numpy compressed data files at the locations indicated by
         in the data base
@@ -428,11 +435,24 @@ class rate_analysis:
         """   
         dt = self.par['time_slice_width']
         o_file = self.var['of_name']
-        
+        fname, ext = os.path.splitext(o_file)
+        dir_name, fn = os.path.split(fname)
+        f_fields = fn.split('_')
+        version = self.par["version"]
+               
+        if new_row:
+            q_table  = 'Rate_Analysis'
+            q_where = f'Shot = {self.par["shot"]} AND Channel = {self.par["channel"]} AND Version = {self.par["version"]}'
+            success, version = db.duplicate_row(self.dbfile, q_table, q_where)
+            if success:
+                print(f'Created new row in {q_table} new version is {version}')
+        file_name    = '_'.join(f_fields[:-1]) + f'_{version}'
         # check the directory exists, if not create it
-        if  not os.path.exists(os.path.dirname(o_file)):
-            os.makedirs(os.path.dirname(o_file))
-        #
+        if  not os.path.exists(dir_name):
+            os.makedirs(dir_name)
+        # assemble the updated file name
+        o_file = dir_name + '/' + file_name + ext
+
         if os.path.isfile(o_file):
             fn = os.path.splitext(o_file)
             o_file= fn[0] + '_' + time.strftime('%d_%m_%Y_%H_%M_%S') + fn[1]         
@@ -445,7 +465,7 @@ class rate_analysis:
         self.last_saved_in = o_file
         # store the file name in the database
         q_table  = 'Rate_Analysis'
-        q_where = f'Shot = {self.par["shot"]} AND Channel = {self.par["channel"]} AND Version = {self.par["version"]}'
+        q_where = f'Shot = {self.par["shot"]} AND Channel = {self.par["channel"]} AND Version = {version}'
         q_what = f'file_name = "{o_file}"'
         db.writetodb(self.dbfile, q_what, q_table, q_where)        
 

@@ -23,6 +23,7 @@ us=1.e6 #conversion to microseconds constant
 dbfile = 'New_MainDB1.db'
 shot = 29880
 channel = 2
+version = 0
 
 ra = rac.rate_analysis(dbfile, shot, channel)
 ra.time_slice_data()

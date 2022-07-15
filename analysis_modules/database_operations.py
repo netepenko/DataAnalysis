@@ -321,6 +321,8 @@ def duplicate_row(db_file, table, where_cp):
     max_version : Int
         latest version number
 
+    Be carful when using queries with versions
+
     """
     conn = lite.connect(DATA_BASE_DIR + db_file)
     with conn:
@@ -331,6 +333,14 @@ def duplicate_row(db_file, table, where_cp):
         field_types = [s[2] for s in t_info]
         # check if a version field exists'
         has_version = 'Version' in field_names
+        # for finding the max row remove the Version statement from the query if it contains one
+        wcp = where_cp.split(' ')
+        if 'Version' in wcp:
+            del wcp[wcp.index('Version')-1:wcp.index('Version')+3]
+            where_cp_no_version = ' '.join(wcp)
+        else:
+            where_cp_no_version = where_cp
+        
         # if it is a versioned row get all field names except version
         if has_version:
             # check if record exists
@@ -338,7 +348,7 @@ def duplicate_row(db_file, table, where_cp):
                 print(f'--> No data for condition: {where_cp} in {table},  cannot duplicate')
                 return has_version, -1                    
             # get the row with the largest version number
-            query = f'SELECT *, max(Version) FROM {table}' + ' WHERE ' + where_cp
+            query = f'SELECT *, max(Version) FROM {table}' + ' WHERE ' + where_cp_no_version
             max_row = list(cur.execute(query).fetchall()[0])
             # increment the version number
             max_row[field_names.index('Version')] += 1
@@ -349,7 +359,13 @@ def duplicate_row(db_file, table, where_cp):
             # insert new row with new version number
             q_insert = 'INSERT INTO '+ table + ' ' + q_names +' VALUES ' + q_values
             max_version = max_row[field_names.index('Version')]
-            cur.execute(q_insert)
+            print(f'duplicate row: {q_insert}')
+            try:
+                cur.execute(q_insert)
+            except Exception as err:
+                print(f'Cannot execute {q_insert} : {err}')
+                max_version = -cur.lastrowid
+                return True, max_version
         else:
             max_rowid = retrieve(db_file, 'max(ROWID)', table, where_cp)[0][0]  # get maximal RWOID for this condition
             q_insert='INSERT INTO '+ table + ' SELECT * '+'FROM ' + table + ' WHERE ' + where_cp + f' AND ROWID = {max_rowid}'

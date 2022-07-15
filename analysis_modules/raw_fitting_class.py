@@ -360,7 +360,7 @@ class raw_fitting:
         Parameters
         ----------
         ff : array (2)
-            fit group limits (slice into the peak position arraty).
+            fit group limits (slice into the peak position array).
         lims: array(2)
             corresponding raw data limie (slice into the data array) 
         plot_fit : Bool, optional
@@ -628,11 +628,15 @@ class raw_fitting:
         self.bkg_par[self.in_boundary] = self.bkg_par_s[self.in_boundary]
         
         
-    def save_fit(self):
+    def save_fit(self, new_row = False):
         """
         save the data as numpy compressed data files at the locations indicated by
         in the data base
 
+        Parameters
+        ----------
+        new_row : Bool, optional
+            Create a new row with new versionnumber (default = False)
         Returns
         -------
         None.
@@ -642,7 +646,14 @@ class raw_fitting:
         shot = self.channel_data.par['shot']
         channel = self.channel_data.par['channel']
         version = self.channel_data.par['version']
+        dbfile = self.channel_data.db_file
         
+        if new_row:
+            q_table  = 'Raw_Fitting'
+            q_where = f'Shot = {shot} AND Channel = {channel} AND Version = {version}'
+            success, version = db.duplicate_row(dbfile, q_table, q_where)
+            if success:
+                print(f'Created new row in {q_table} new version is {version}')
         o_file = f'{o_dir}/fit_results_{shot}_{channel:d}_{version:d}_{self.tmin:5.3f}_{self.tmax:5.3f}.npz'
         if  not os.path.exists(os.path.dirname(o_file)):
             os.makedirs(os.path.dirname(o_file))
@@ -655,7 +666,7 @@ class raw_fitting:
         self.last_saved_in = o_file
         # store the file name in the database
         q_table  = 'Raw_Fitting'
-        q_where = f'Shot = {self.channel_data.shot} AND Channel = {self.channel_data.channel}'
+        q_where = f'Shot = {self.channel_data.shot} AND Channel = {self.channel_data.channel} AND Version = {version}'
         q_what = f'file_name = "{o_file}"'
         db.writetodb(self.channel_data.db_file, q_what, q_table, q_where)
         

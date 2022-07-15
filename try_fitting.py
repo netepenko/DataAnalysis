@@ -21,7 +21,7 @@ us = 1e6
 
 
 #%%
-cc = cdc.channel_data(29880, 2, 'New_MainDB1.db')
+cc = cdc.channel_data(29880, 2, 'New_MainDB1.db', version = 0)
 cc.read_database_par()
 cc.load_data()
 """
@@ -65,4 +65,4 @@ rf.plot_fit_group(ng, shifted = True, warnings = True)
 rf.fit_data()
 
 #%%
-rf.save_fit()
+rf.save_fit(new_row = True)

@@ -39,12 +39,16 @@ class channel_data():
 
 
     # initialize the class instance
-    def __init__(self, shot, channel, db_file, Version = 0):
+    def __init__(self, shot, channel, db_file, version = None):
+        # if version is not specified take the highest one
+        if version is None:
+            wheredb =  f'Shot = {shot} AND Channel = {channel}'
+            (version, ) = db.retrieve(db_file, 'Version','Raw_Fitting', wheredb)[-1]        
         self.shot = shot
         self.shot_str = f'{self.shot:d}'
         self.channel = channel
         self.db_file = db_file
-        self.Version = Version
+        self.Version = version
         self.wheredb = f'Shot = {shot:d} AND Channel = {channel:d}'
         self.wheredb_version = self.wheredb + f' AND Version = {self.Version:d}'
         # frequently used string to retrieve data from database that indicates shot and chennel
@@ -52,7 +56,7 @@ class channel_data():
         self.var = {}  # class variables dictionarry
         self.par['shot'] = shot
         self.par['channel'] = channel
-        self.par['version'] = Version
+        self.par['version'] = version
         self.psize = 5
 
 
