@@ -65,12 +65,12 @@ def create(db_file):
     # default values for creating tables:
 
     # Shot list table
-    shot_list_fields = ['Shot',         'Date', 'File_Name',' Folder', 'RP_position', 't_offset', 'N_chan', 'Comment']
-    shot_list_types =  ['INT not NULL', 'TEXT', 'TEXT',      'TEXT',   'REAL',        'REAL',     'INT',    'TEXT']
+    shot_list_fields = ['Shot',         'Date', 'File_Name',' Folder', 'RP_position', 'RP_setpoint','t_offset', 'N_chan', 'Comment']
+    shot_list_types =  ['INT not NULL', 'TEXT', 'TEXT',      'TEXT',   'REAL',        'REAL',         'REAL',   'INT',    'TEXT']
     shot_list_values = []
-    shot_list_values.append( [29975,      '"22-Aug-2013"', '"29975_DAQ_220813-141746.hws"','"Data/"', 1.65, 0., 6,   '"No comment"' ] )  # strings need to be enclosed in ""
-    shot_list_values.append ([29879,      '"19-Aug-2013"', '"DAQ_190813-112521.hws"','"Data/"', 1.83, 0., 6,   '"No comment"' ])   # strings need to be enclosed in ""
-    shot_list_values.append([29880,      '"19-Aug-2013"', '"DAQ_190813-114059.hws"','"Data/"', 1.65, 0., 6,   '"No comment"' ])   # strings need to be enclosed in "
+    shot_list_values.append( [29975,      '"22-Aug-2013"', '"29975_DAQ_220813-141746.hws"','"Data/"', 1.65, 0., 0., 6,   '"No comment"' ] )  # strings need to be enclosed in ""
+    shot_list_values.append ([29879,      '"19-Aug-2013"', '"DAQ_190813-112521.hws"','"Data/"', 1.83, 0., 0., 6,   '"No comment"' ])   # strings need to be enclosed in ""
+    shot_list_values.append([29880,      '"19-Aug-2013"', '"DAQ_190813-114059.hws"','"Data/"', 1.65, 0., 0., 6,   '"No comment"' ])   # strings need to be enclosed in "
 
     shot_list = db_table_data('Shot_List', shot_list_fields, shot_list_types, shot_list_values)
 
@@ -173,7 +173,7 @@ def check_condition(db_file, table, where):
         return True
 
 #%%retrieve data
-def retrieve(db_file, params, table, where):
+def retrieve(db_file, params, table, where = None):
     """
     Retrieves paremeters from table in database.
 
@@ -203,8 +203,11 @@ def retrieve(db_file, params, table, where):
 
     conn = lite.connect(DATA_BASE_DIR + db_file)
     #create query line
-    qline='SELECT '+ params +' FROM ' + table + ' WHERE ' + where
-    print(f'query = {qline}')
+    if where is None:
+        qline='SELECT '+ params +' FROM ' + table
+    else:
+        qline='SELECT '+ params +' FROM ' + table + ' WHERE ' + where
+    print(f'Using database file : {DATA_BASE_DIR + db_file}')
     with conn:
         cur = conn.cursor()
         try:
@@ -215,7 +218,8 @@ def retrieve(db_file, params, table, where):
             print(f'Error: {e}')
             print(70*'-')
             return []
-        return cur.fetchall()
+        result = cur.fetchall()
+        return result
     conn.close()
 
 #%%write to database
@@ -256,6 +260,22 @@ def writetodb(db_file, params, table, where):
             print(f'probem with command: {qline}')
             print(f'Error: {e}')
     conn.close()
+
+#%% some utility functions
+def get_shot_list(db_file):
+    sl = retrieve(db_file, 'Shot, N_chan', 'Shot_List')
+    return sl
+    
+
+def get_folder(db_file, shot):
+    (dd,) = retrieve(db_file, 'Folder', 'Shot_List', f'Shot = {shot}')[0]
+    return dd
+
+def set_folder(db_file, shot, dir_name):
+    q_what = f'Folder = "{dir_name}"'
+    q_table = 'Shot_List'
+    q_where = f'Shot = {shot}'
+    writetodb(db_file, q_what, q_table, q_where)    
 
 
 #%% get previous shot
@@ -419,7 +439,6 @@ def copyrow(db_file, table, where_cp, substitutions):
         # q_update='UPDATE ' + table + ' SET ' + sub + f' WHERE ROWID = {-max_version}'
         writetodb(db_file, substitutions, table,  f' ROWID = {-max_version}')
     # print('q_update = ',  q_update)
-
 
 #%% Tests
 """

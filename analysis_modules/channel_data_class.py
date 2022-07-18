@@ -31,20 +31,38 @@ from . import data_plotting
 # while declared as float (mistake in LabView acquisition code lead to this confusion)
 convert = True
 # --------------------------------
+"""
+Main class to load data. If a version number is not given the latest version of parameters from 
+raw_fitting etc. are bing used
+
+scan_only = True is used to scan the data and see if there are porntially valid data in this channel
+no parameters are loaded from the other database tables 
+"""
 # --------------------------------
 # conversion to microseconds constant
 us = 1.e6
+
+
 
 class channel_data():
 
 
     # initialize the class instance
-    def __init__(self, shot, channel, db_file, version = None):
+    def __init__(self, shot, channel, db_file, version = None, scan_only = False, Vscan_s = 0.1, Vscan_th = 0.15):
         # if version is not specified take the highest one
-        if version is None:
+        self.par = {}  # parameters dictionary initialization
+        self.var = {}  # class variables dictionarry
+        if scan_only:
+            version = 0
+            self.par['Vstep'] = Vscan_s
+            self.par['Vth'] = Vscan_th
+            self.par['max_neg_V'] = -0.3
+            self.par['min_delta_t'] = 3e-7
+        elif version is None:
             wheredb =  f'Shot = {shot} AND Channel = {channel}'
             (version, ) = db.retrieve(db_file, 'Version','Raw_Fitting', wheredb)[-1]        
         self.shot = shot
+        self.scan_only = scan_only
         self.shot_str = f'{self.shot:d}'
         self.channel = channel
         self.db_file = db_file
@@ -52,8 +70,7 @@ class channel_data():
         self.wheredb = f'Shot = {shot:d} AND Channel = {channel:d}'
         self.wheredb_version = self.wheredb + f' AND Version = {self.Version:d}'
         # frequently used string to retrieve data from database that indicates shot and chennel
-        self.par = {}  # parameters dictionary initialization
-        self.var = {}  # class variables dictionarry
+
         self.par['shot'] = shot
         self.par['channel'] = channel
         self.par['version'] = version
@@ -75,6 +92,10 @@ class channel_data():
             print(f'table Shot_List does not contain data for {wheredb}')
             return -1
         self.par['exp_dir'], self.par['exp_file'] = db.retrieve(dbfile,  'Folder, File_Name', 'Shot_List', which_shot)[0]
+
+        # for scanning only no other parameters are needed
+        if self.scan_only:
+            return
 
         # extract data from Raw_Fitting'
         
@@ -168,7 +189,10 @@ class channel_data():
         # testing of fitting pulser
 #        self.td = self.td[0:1000000]
 #        self.Vps = np.zeros_like(self.td)
-
+        if self.scan_only:
+            self.par['dtmin'] = self.td.min()
+            self.par['dtmax'] = self.td.max()
+            return
         # add pulser to data if add_pulser parameter set to True
         if self.par['add_pulser'] == 'True':
             self.add_pulser()
@@ -196,7 +220,7 @@ class channel_data():
 
 #   plotting of raw data without overloading the figure
 # (skipping some data points according to maximum allowed points on plot)
-    def plot_raw(self, xmin=None, xmax=None):
+    def plot_raw(self, xmin=None, xmax=None, **kwargs):
 
         V = self.Vps
         t = self.td
@@ -209,7 +233,7 @@ class channel_data():
             interval = np.where((self.par['dtmin'] < t) & (t < self.par['dtmax']))
             t = t[interval]
             V = V[interval]            
-        data_plotting.plot_data(t, V, '.', color='blue')
+        data_plotting.plot_data(t, V, **kwargs)
 
 # add pulser signals to check fit performance
     def add_pulser(self):

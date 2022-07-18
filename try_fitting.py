@@ -20,10 +20,22 @@ import LT.box as B
 us = 1e6
 
 
-#%%
-cc = cdc.channel_data(29880, 2, 'New_MainDB1.db', version = 0)
+#%% example for scanning for data only
+shot = 30105; channel = 0
+cc = cdc.channel_data(shot, channel, 'New_MainDB1.db', scan_only=True, Vscan_s = .1, Vscan_th = .3)
 cc.read_database_par()
 cc.load_data()
+# scanning for data only
+rf = RFC.raw_fitting(cc, scan_only = True)
+print(f'Shot {shot} has potentially useful data in channel {channel} : {rf.has_data}')
+#%% normal loading data for analysis
+
+shot = 29975; channel = 2
+cc = cdc.channel_data(shot, channel, 'New_MainDB1.db')
+cc.read_database_par()
+cc.load_data()
+
+#%% filtered data
 """
 cc.load_npz_data(file_name='DAQ_190813-112521_filtered.npz')
 cc.td *= cdc.us
@@ -31,7 +43,7 @@ cc.dt *= cdc.us
 """
 #%% plot data range
 
-cc.plot_raw()
+cc.plot_raw(ls = '-')
 
 
 #%% get sample peaks
@@ -41,6 +53,7 @@ ps.find_good_peaks()
 
 ps.fit_peaks(save_fit = True)
 ps.save_parameters(cc.db_file)
+
 
 #%% ready for raw fitting
 

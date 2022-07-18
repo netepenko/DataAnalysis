@@ -78,7 +78,7 @@ class raw_fitting:
     
     Call to to the fitting of raw data
     """
-    def __init__(self, channel_data, tmin = None, tmax = None, plot=0, plot_s = 0, start_plot_at = None, refine_positions = False, use_refined = False):
+    def __init__(self, channel_data, tmin = None, tmax = None, plot=0, plot_s = 0, start_plot_at = None, refine_positions = False, use_refined = False, scan_only = False, n_check_peaks = 10000):
         """
         create an instance for fitting the peaks
 
@@ -109,17 +109,22 @@ class raw_fitting:
 
         self.plot = plot  # number of fit groups to plot
         self.plot_s = plot_s # number of shifted fit groups to plot
+        self.n_check_peaks = n_check_peaks
         if start_plot_at is None:
             self.start_plot_at = tmin
         else:
             self.start_plot_at = start_plot_at
         
         self.channel_data = channel_data
-        self.sig = self.channel_data.par['sig']
+
         self.fit_progress = 100
         self.refine_positions = refine_positions
         self.use_refined = use_refined
         self.check_cov = False
+
+        if scan_only:
+            tmin = channel_data.td.min()/us
+            tmax = channel_data.td.max()/us
 
         if tmin is None:
             self.tmin = channel_data.par['dtmin']/us
@@ -129,6 +134,11 @@ class raw_fitting:
             self.tmax = channel_data.par['dtmax']/us
         else:
             self.tmax = tmax
+        
+        if scan_only:
+            self.find_peaks()
+            self.has_data = self.imax_fit.shape[0] > self.n_check_peaks
+
         
     def do_all(self):
         """
@@ -328,7 +338,7 @@ class raw_fitting:
         None.
 
         """
-        
+        sig = self.channel_data.par['sig']
         # set values for the peak shape (should have been determined in peak_sampling)
         self.alpha = B.Parameter(1./self.channel_data.par['decay_time'], 'alpha')
         self.beta = B.Parameter(1./self.channel_data.par['rise_time'], 'beta')
@@ -337,10 +347,10 @@ class raw_fitting:
         self.n_sig_low = self.channel_data.par['n_sig_low']
         self.n_sig_boundary = self.channel_data.par['n_sig_boundary']            
         # determine lower (and upper) edges
-        self.dt_l = self.n_sig_low*self.sig  # in us
+        self.dt_l = self.n_sig_low*sig  # in us
         self.dl = int(self.dt_l/self.channel_data.dt) # in channels 
                 
-        self.boundary = self.n_sig_boundary*self.sig # boundary reagion in terms of sigma (peak width)
+        self.boundary = self.n_sig_boundary*sig # boundary reagion in terms of sigma (peak width)
         self.in_boundary = np.zeros_like(self.tp, dtype = 'bool')  # array of logicals indicating if a peak in a boundary region
         
         # number of bkg parameters

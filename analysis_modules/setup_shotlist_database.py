@@ -19,29 +19,14 @@ def get_date(l):
     s = l['file_name']
     # extract the date
     date_str = l['file_name'].split('_')[1].split('-')[0]
-    # the dates are in European forma (day first)
-    return DU.parser.parse(date_str, dayfirst = True).strftime('%b-%d-%Y')
+    return DU.parser.parse(date_str).strftime('%b-%d-%Y')
 
 def get_dir(l):
     s = l['digitizer_file_name']
     return os.path.split(s)[0] + '/'
 
 #%%
-"""
-
-# on Nyoko2  for old MAST data
-
 database_dir = '/data2/plasma.1/analysis/'
-data_dir = '/data2/plasma.1/MAST/'
-
-database_name = 'full_shot_listDB_nyoko2.db'
-
-"""
-
-# On Mac
-
-database_dir = '/Users/boeglinw/Documents/boeglin.1/Fusion/Fusion_Products/MAST_data/'
-data_dir = '/Users/boeglinw/Documents/boeglin.1/Fusion/Fusion_Products/MAST_data/MAST/'
 
 database_name = 'full_shot_listDB.db'
 
@@ -52,8 +37,7 @@ db.create(db_file_name)
 
 # load shot list
 
-
-
+data_dir = '/data2/plasma.1/MAST/'
 
 shot_list = 'updated_shot_list.data'
 
@@ -72,9 +56,7 @@ for l in ds:
     shot = l['shot_number']
     date_str = "'"+get_date(l) + "'"
     file_name = "'" + l['file_name']+ "'"
-    dd = get_dir(l)
-    rel_dir = '/'.join(dd.split('/')[-2:])  # use only the path relative to MAST
-    file_dir = "'" + data_dir + rel_dir + "'"
+    file_dir = "'" + get_dir(l) + "'"
     rp_pos = l['RP_pos']
     rp_setp = l['setpoint']
     

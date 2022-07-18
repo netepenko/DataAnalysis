@@ -19,10 +19,11 @@ import LT.box as B
 us=1.e6 #conversion to microseconds constant
 
 #%% data range
+cdc.db.DATA_BASE_DIR = '/Users/boeglinw/Documents/boeglin.1/Fusion/Fusion_Products/MAST_data/'
+dbfile = 'full_shot_listDB.db'
 
-dbfile = 'New_MainDB1.db'
-shot = 29880
-channel = 2
+shot = 30114
+channel = 3
 version = 0
 
 ra = rac.rate_analysis(dbfile, shot, channel)
