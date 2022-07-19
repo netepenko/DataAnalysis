@@ -91,7 +91,11 @@ class channel_data():
         if not db.check_condition(dbfile, 'Shot_List' , which_shot):
             print(f'table Shot_List does not contain data for {wheredb}')
             return -1
+        (self.par['root_dir'],) = db.retrieve(dbfile,  'Root_Folder', 'Common_Parameters')[0]
         self.par['exp_dir'], self.par['exp_file'] = db.retrieve(dbfile,  'Folder, File_Name', 'Shot_List', which_shot)[0]
+        (t_offset,) = db.retrieve(dbfile,  't_offset', 'Shot_List', which_shot)[0]
+        self.par['t_offset'] = t_offset*us
+        
 
         # for scanning only no other parameters are needed
         if self.scan_only:
@@ -149,7 +153,7 @@ class channel_data():
     def load_data(self):
         # --------------------------------
         # ######## Load raw data #########
-        self.data_filename =  self.par['exp_dir'] + self.par['exp_file']
+        self.data_filename =  self.par['root_dir'] + self.par['exp_dir'] + self.par['exp_file']
         f = h5py.File(self.data_filename, 'r')
         # setup reading the data
         data_root = 'wfm_group0/traces/trace' + str(self.par['channel']) + '/'
@@ -157,7 +161,7 @@ class channel_data():
         print("-----------------------Getting data------------------------")
 
         # load time information
-        t0 = f[data_root + 'x-axis'].attrs['start']*us
+        t0 = f[data_root + 'x-axis'].attrs['start']*us + self.par['t_offset']
         dt = f[data_root + 'x-axis'].attrs['increment']*us
         # load scale coeeff and scale dataset
         scale = f[data_root + 'y-axis/scale_coef'][()]

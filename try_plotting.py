@@ -22,8 +22,14 @@ us=1.e6 #conversion to microseconds constant
 cdc.db.DATA_BASE_DIR = '/Users/boeglinw/Documents/boeglin.1/Fusion/Fusion_Products/MAST_data/'
 dbfile = 'full_shot_listDB.db'
 
-shot = 30114
-channel = 3
+
+#%% data range
+cdc.db.DATA_BASE_DIR = '/Users/boeglinw/Documents/boeglin.1/Fusion/Fusion_Products/DataAnalysis/'
+dbfile = 'New_MainDB1.db'
+
+#%%
+shot = 29975
+channel = 2
 version = 0
 
 ra = rac.rate_analysis(dbfile, shot, channel)

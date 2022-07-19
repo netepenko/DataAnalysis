@@ -19,19 +19,28 @@ import LT.box as B
 
 us = 1e6
 
+#%%
+cdc.db.DATA_BASE_DIR = '/Users/boeglinw/Documents/boeglin.1/Fusion/Fusion_Products/MAST_data/'
+dbfile = 'full_shot_listDB.db'
+
+#%% data range
+cdc.db.DATA_BASE_DIR = '/Users/boeglinw/Documents/boeglin.1/Fusion/Fusion_Products/DataAnalysis/'
+dbfile = 'New_MainDB1.db'
 
 #%% example for scanning for data only
-shot = 30105; channel = 0
-cc = cdc.channel_data(shot, channel, 'New_MainDB1.db', scan_only=True, Vscan_s = .1, Vscan_th = .3)
+"""
+shot = 29975; channel = 2
+cc = cdc.channel_data(shot, channel, dbfile, scan_only=True, Vscan_s = .1, Vscan_th = .3)
 cc.read_database_par()
 cc.load_data()
 # scanning for data only
 rf = RFC.raw_fitting(cc, scan_only = True)
 print(f'Shot {shot} has potentially useful data in channel {channel} : {rf.has_data}')
+"""
 #%% normal loading data for analysis
 
 shot = 29975; channel = 2
-cc = cdc.channel_data(shot, channel, 'New_MainDB1.db')
+cc = cdc.channel_data(shot, channel, dbfile)
 cc.read_database_par()
 cc.load_data()
 
@@ -78,4 +87,4 @@ rf.plot_fit_group(ng, shifted = True, warnings = True)
 rf.fit_data()
 
 #%%
-rf.save_fit(new_row = True)
+rf.save_fit()

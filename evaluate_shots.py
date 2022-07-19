@@ -20,7 +20,7 @@ import LT.box as B
 us = 1e6
 
 
-db_file = 'full_shot_listDB_nyoko2.db'
+db_file = 'full_shot_listDB.db'
 db_dir = '/Users/boeglinw/Documents/boeglin.1/Fusion/Fusion_Products/MAST_data/'
 
 cdc.db.DATA_BASE_DIR = db_dir
@@ -29,7 +29,7 @@ db = cdc.db
 
 
 #%% scanning a single channel for data only
-shot = 30114; channel = 0
+shot = 30121; channel = 1
 
 cc = cdc.channel_data(shot, channel, db_file, scan_only=True, Vscan_s = .1, Vscan_th = .3)
 cc.read_database_par()

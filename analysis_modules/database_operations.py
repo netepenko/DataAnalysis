@@ -63,7 +63,13 @@ class db_table_data:
 def create(db_file):
     conn = lite.connect(db_file)
     # default values for creating tables:
-
+    common_parameters_fields = ['Root_Folder']
+    common_parameters_types = ['TEXT']
+    common_parameters_values = ['"./"']
+    
+    common_parameters = db_table_data('Common_Parameters', common_parameters_fields, common_parameters_types, [common_parameters_values])
+    
+    
     # Shot list table
     shot_list_fields = ['Shot',         'Date', 'File_Name',' Folder', 'RP_position', 'RP_setpoint','t_offset', 'N_chan', 'Comment']
     shot_list_types =  ['INT not NULL', 'TEXT', 'TEXT',      'TEXT',   'REAL',        'REAL',         'REAL',   'INT',    'TEXT']
@@ -116,6 +122,10 @@ def create(db_file):
     comb_rates =db_table_data('Combined_Rates', comb_rates_fields, comb_rates_types, [comb_rates_values])
 
     with conn:
+        
+        common_parameters.create_table(conn)
+        common_parameters.insert_into(conn)
+        
         shot_list.create_table(conn)
         shot_list.insert_into(conn)
         #
