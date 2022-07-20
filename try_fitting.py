@@ -17,6 +17,7 @@ from analysis_modules import raw_fitting_class as RFC
 
 import LT.box as B
 
+
 us = 1e6
 
 #%%
@@ -29,7 +30,7 @@ dbfile = 'New_MainDB1.db'
 
 #%% normal loading data for analysis
 
-shot = 30121; channel = 0
+shot = 30121; channel = 3
 cc = cdc.channel_data(shot, channel, dbfile)
 cc.read_database_par()
 cc.load_data()
@@ -68,8 +69,10 @@ rf.setup_fit_groups()
 rf.init_fitting()
 print(f'Created {rf.fg.shape[0]} fit groups')
 #%%
+B.pl.figure()
+# find a fit group for a certain time in us
+ng = rf.find_fitgroup(246721)
 
-ng = 1000
 rf.plot_fit_group(ng, shifted = False, warnings = True)
 rf.plot_fit_group(ng, shifted = True, warnings = True)
 

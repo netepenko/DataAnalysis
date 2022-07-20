@@ -42,13 +42,13 @@ no parameters are loaded from the other database tables
 # conversion to microseconds constant
 us = 1.e6
 
-
+to_bool = {'True':True, 'False':False}
 
 class channel_data():
 
 
     # initialize the class instance
-    def __init__(self, shot, channel, db_file, version = None, scan_only = False, Vscan_s = 0.1, Vscan_th = 0.15):
+    def __init__(self, shot, channel, db_file, version = None, result_root = None, scan_only = False, Vscan_s = 0.1, Vscan_th = 0.15):
         # if version is not specified take the highest one
         self.par = {}  # parameters dictionary initialization
         self.var = {}  # class variables dictionarry
@@ -77,6 +77,10 @@ class channel_data():
         self.par['channel'] = channel
         self.par['version'] = version
         self.psize = 5
+        if result_root is None:
+            self.par['result_root'] = './Analysis_Results/'
+        else:
+            self.par['result_root'] = result_root
 
 
     def read_database_par(self):
@@ -114,7 +118,8 @@ class channel_data():
         # read other parameters
 
         self.par['poly_order'], self.par['n_peaks_to_fit'] = db.retrieve(dbfile, 'poly_order, n_peaks_to_fit', 'Raw_Fitting', wheredb_version)[0]
-        self.par['add_pulser'], self.par['pulser_rate'], self.par['P_amp'] = db.retrieve(dbfile,  'add_pulser, pulser_rate, P_amp', 'Raw_Fitting', wheredb_version)[0]
+        add_pulser, self.par['pulser_rate'], self.par['P_amp'] = db.retrieve(dbfile,  'add_pulser, pulser_rate, P_amp', 'Raw_Fitting', wheredb_version)[0]
+        self.par['add_pulser'] = to_bool[add_pulser]
         self.par['use_threshold'], self.par['Vstep'], self.par['Vth'] = db.retrieve(dbfile,  'use_threshold, Vth, Vstep', 'Raw_Fitting', wheredb_version)[0]
         self.par['min_delta_t'], self.par['max_neg_V'] = db.retrieve(dbfile,  'min_delta_t, max_neg_V', 'Raw_Fitting', wheredb_version)[0]
 
@@ -151,7 +156,7 @@ class channel_data():
         self.var['data_plot'] = None
 
         # assign directories for results (edit later for good tree structure!!)
-        self.var['res_dir'] = './Analysis_Results/' + shot + '/Raw_Fitting/'
+        self.var['res_dir'] = self.par['result_root'] + shot + '/Raw_Fitting/'
         print('Analysis results will be placed in: ', self.var['res_dir'])
         return 0
 

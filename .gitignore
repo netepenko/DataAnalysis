@@ -7,4 +7,5 @@
 *.o
 *.mod
 /analysis_modules/*.dSYM/*
+/f2py*
 .DS_Store

@@ -28,13 +28,15 @@ cdc.db.DATA_BASE_DIR = '/Users/boeglinw/Documents/boeglin.1/Fusion/Fusion_Produc
 dbfile = 'New_MainDB1.db'
 
 #%%
-shot = 29975
-channel = 2
+shot = 30121
+channel = 3
 version = 0
 
 ra = rac.rate_analysis(dbfile, shot, channel)
 ra.time_slice_data()
 ra.make_2d_histo()
+
+#%%
 
 B.pl.figure()
 ra.plot_results()
