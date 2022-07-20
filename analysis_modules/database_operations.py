@@ -5,6 +5,7 @@ WB SQLITe data base initialization and operations to hande parameters needed for
 
 """
 import sqlite3 as lite
+import sys
 #import os
 
 DATA_BASE_DIR = '/Users/boeglinw/Documents/boeglin.1/Fusion/Fusion_Products/DataAnalysis/'
@@ -181,6 +182,36 @@ def check_condition(db_file, table, where):
         return False
     else:
         return True
+
+#%% raise sys.exit with error message if data do not exist
+
+def check_data(db_file, table, where, message = None):
+    """
+    Check if a record satsifying the condition where exists.
+    If not raises sys.exit with custom error message
+
+    Parameters
+    ----------
+    db_file : str
+        database file name.
+    table : str
+        table name.
+    where : str
+        SQL string for conditional selection.
+    message: str, optional
+        Error message to be displayed
+
+    Returns
+    -------
+
+    """    
+    if check_condition(db_file, table, where):
+        return
+    else:
+        if message is None:
+            message = f'No data in {table} for condition {where}'
+        sys.exit(message)
+        
 
 #%%retrieve data
 def retrieve(db_file, params, table, where = None):

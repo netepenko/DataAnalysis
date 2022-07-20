@@ -113,7 +113,9 @@ class peak_sampling:
         q_from  = 'Peak_Sampling'
         q_where = f'Shot = {self.shot} AND Channel = {self.channel} AND Version = {self.channel_data.Version}'
         
-        q_what = 'b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12'  
+        q_what = 'b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12' 
+        
+        db.check_data(dbfile, q_from, q_where)
         tsmin = np.asarray(db.retrieve(dbfile, q_what, q_from, q_where) ) *us
         
         q_what = 'e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12'

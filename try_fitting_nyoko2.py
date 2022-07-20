@@ -29,7 +29,7 @@ dbfile = 'New_MainDB1.db'
 
 #%% normal loading data for analysis
 
-shot = 30121; channel = 0
+shot = 29975; channel = 2
 cc = cdc.channel_data(shot, channel, dbfile)
 cc.read_database_par()
 cc.load_data()

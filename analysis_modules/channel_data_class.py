@@ -60,6 +60,8 @@ class channel_data():
             self.par['min_delta_t'] = 3e-7
         elif version is None:
             wheredb =  f'Shot = {shot} AND Channel = {channel}'
+            e_msg = f'No data for shot {shot} and  channel {channel} in Rate Analysis'
+            db.check_data(db_file, 'Raw_Fitting', wheredb, e_msg)
             (version, ) = db.retrieve(db_file, 'Version','Raw_Fitting', wheredb)[-1]        
         self.shot = shot
         self.scan_only = scan_only
@@ -88,9 +90,9 @@ class channel_data():
         which_shot = f'Shot = {shot}'
         # extract data from Shot_list
         
-        if not db.check_condition(dbfile, 'Shot_List' , which_shot):
-            print(f'table Shot_List does not contain data for {wheredb}')
-            return -1
+        e_msg = f'table Shot_List does not contain data for {wheredb}'
+        db.check_data(dbfile, 'Shot_List' , which_shot, e_msg)
+
         (self.par['root_dir'],) = db.retrieve(dbfile,  'Root_Folder', 'Common_Parameters')[0]
         self.par['exp_dir'], self.par['exp_file'] = db.retrieve(dbfile,  'Folder, File_Name', 'Shot_List', which_shot)[0]
         (t_offset,) = db.retrieve(dbfile,  't_offset', 'Shot_List', which_shot)[0]
@@ -103,6 +105,7 @@ class channel_data():
 
         # extract data from Raw_Fitting'
         
+        db.check_data(dbfile,'Raw_Fitting' , wheredb_version)
         if not db.check_condition(dbfile, 'Raw_Fitting' , wheredb_version):
             print(f'table Raw_Fitting does not contain data for {wheredb_version}')
             return -1       
@@ -123,13 +126,15 @@ class channel_data():
         self.par['sig'] = sig*us
 
         # read peak shape parameters from database Peak_Sampling table
-        if not db.check_condition(dbfile, 'Peak_Sampling' , wheredb_version):
-            print(f'table Peak_Sampling does not contain data for {wheredb_version}')
-            return -1     
         
-        decay_time, rise_time = db.retrieve(dbfile, 'decay_time, rise_time', 'Peak_Sampling', wheredb_version)[0]
+        e_msg = f'table Peak_Sampling does not contain data for {wheredb_version}'
+        db.check_data(dbfile, 'Peak_Sampling' , wheredb_version, e_msg)
+        
+        decay_time, rise_time, n_samp, position = db.retrieve(dbfile, 'decay_time, rise_time, n_samp, position', 'Peak_Sampling', wheredb_version)[0]
         self.par['decay_time'] = decay_time*us  # converted to microseconds
         self.par['rise_time'] = rise_time*us  # converted to microseconds
+        self.par['n_samp'] = n_samp
+        self.par['position'] = position*us
         
         (Vstep, Vth, Chi2, tmin, tmax) = db.retrieve(dbfile, 'Vstep, Vth, Chi2, tmin, tmax', 'Peak_Sampling', wheredb_version)[0]
         
@@ -198,7 +203,7 @@ class channel_data():
             self.par['dtmax'] = self.td.max()
             return
         # add pulser to data if add_pulser parameter set to True
-        if self.par['add_pulser'] == 'True':
+        if self.par['add_pulser']:
             self.add_pulser()
 
 #   plotting of raw data without overloading the figure
@@ -219,7 +224,7 @@ class channel_data():
         self.dt = d['time'][1] - d['time'][0]
         print("-----------------------Data loaded-------------------------")
         # add pulser to data if add_pulser parameter set to True
-        if self.par['add_pulser'] == 'True':
+        if self.par['add_pulser']:
             self.add_pulser()
 
 #   plotting of raw data without overloading the figure
@@ -262,6 +267,7 @@ class channel_data():
         # generate random times according to the rate and the time interval
         t_pulse = np.random.uniform(size=N_events)*Delta_t
         t_pulse.sort()   # sort the pulse times
+        print(f'---> Added {t_pulse.size} random simulated pulses <---')
         # add the pulses to the signals
         for t_pu in t_pulse:
             Vtotal = UT.peak(ts - self.par['position'],

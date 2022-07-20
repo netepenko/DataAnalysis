@@ -18,6 +18,7 @@ import pickle
 
 from . import database_operations as db
 from . import utilities as UT
+import sys
 
 us=1.e6 #conversion to microseconds constant
 
@@ -114,10 +115,14 @@ class rate_analysis:
         # if version is not specified take the highest
         if version is None:
             wheredb =  f'Shot = {shot} AND Channel = {channel}'
+            e_msg = f'No data for {shot} and channel {channel} in Rate Analysis'
+            db.check_data(dbfile, 'Rate_Analysis', wheredb, e_msg)
             (version, ) = db.retrieve(dbfile, 'Version','Rate_Analysis', wheredb)[-1]
             
+        e_msg = f'No data for {shot} and channel {channel} and version {version} in Rate Analysis'
         wheredb =  f'Shot = {shot} AND Channel = {channel} AND Version = {version}'
-
+        db.check_data(dbfile, 'Rate_Analysis', wheredb, e_msg)
+        
         self.dbfile = dbfile
         self.par={}
         self.var={}
@@ -156,11 +161,13 @@ class rate_analysis:
         (sig_ratio)=db.retrieve(dbfile,'sig_ratio', 'Rate_Analysis', wheredb)[0]
         self.par['sig_ratio']=sig_ratio
 
-
+        e_msg = f'No data for {shot} and channel {channel} in Shot_List'
+        db.check_data(dbfile, 'Shot_List', 'Shot = '+str(shot) , e_msg)
+        
         (t_offset,)=db.retrieve(dbfile,'t_offset', 'Shot_List', 'Shot = '+str(shot))[0]
         self.par['t_offset']=t_offset
-
-
+        
+        db.check_data(dbfile, 'Raw_Fitting', wheredb)
         ret_val = db.retrieve(dbfile,'dtmin, dtmax', 'Raw_Fitting', wheredb)
         if ret_val == []:
             print(f'No data from : {wheredb}, check if record exists')
