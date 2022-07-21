@@ -8,6 +8,8 @@ Created on Wed Oct 12 21:05:53 2016
 import numpy as np
 import LT.box as B
 
+import h5py
+
 import time
 import os
 
@@ -35,7 +37,7 @@ def get_fit_groups(num_peaks, imax, t_off, t):
     # num_peaks    :  number of peaks to be fitted (on average) in one group
     # imax         : indices of peak positions into the t array
     #
-    # calcualte: fg: fit group array containins start and end index into imax array for each fit group
+    # calcualte: fg: fit group array containing start and end index into imax array for each fit group
     #            fit_window: average width of fit range in t
     #            fg_limits: array of limits into the data array for each conscutie group
     #            fg_number: array of fit group numbers, these are the indices into the fg_limits array
@@ -58,19 +60,21 @@ def get_fit_groups(num_peaks, imax, t_off, t):
     i_start = np.arange(i_offset, t.size+i_window, i_window).clip(max = (t.size - 1))
     i_stop = np.roll(i_start,  -1)
     fg_limits =  np.array([i_start[:-1], i_stop[:-1]]).T
-    # groups peak positions intoo fit groups
-    # shift position indeces by i_offset and keep only positive values
+    # groups peak positions into fit groups
+    # shift position indices by i_offset and keep only positive values
     imax_shift = imax - i_offset
     n_shift = np.sum(imax_shift < 0)   # select only positive peak indices
     imax_sel = imax_shift[n_shift:]   # select the corresponding positions
     i_group = (imax_sel/i_window ).astype(int) # group the positions
     # the group number is the index into the limits array as the group numbers are not necessarily consecutive
-    fg_number, fg_start = np.unique(i_group, return_index = True)
+    fg_number, fg_start, fg_counts = np.unique(i_group, return_index = True, return_counts = True)
     fg_start += n_shift # increase the index by the number of dropped values to point back into the original array
     # end of fit groups
-    fg_stop = np.roll(fg_start, -1)
-    fg = np.array([fg_start[:-1], fg_stop[:-1]]).T
-    return fg, fit_window, fg_limits[fg_number] 
+    fg_stop = fg_start + fg_counts
+    fg = np.zeros_like(fg_limits)
+    fg[:,0][fg_number] = fg_start
+    fg[:,1][fg_number] = fg_stop
+    return fg, fit_window, fg_limits
     
 
 class raw_fitting:
@@ -121,6 +125,9 @@ class raw_fitting:
         self.refine_positions = refine_positions
         self.use_refined = use_refined
         self.check_cov = False
+
+        self.correct_data = False
+        self.corrected_data_scale = 10000  # resolution 0.1 mV for saved data as integers
 
         if scan_only:
             tmin = channel_data.td.min()/us
@@ -181,6 +188,9 @@ class raw_fitting:
         self.V=self.channel_data.Vps[sl]
         self.td=self.channel_data.td[sl]
         self.dt=self.channel_data.dt
+        
+        if self.correct_data:
+            self.V_corr = np.zeros_like(self.V)
 
         #-------------------------------------
         # setup peak finding
@@ -398,33 +408,14 @@ class raw_fitting:
             chisquare for this fit.
 
         """
-        # good peak data
-        if (self.use_refined):
-            # only used good refined positions
-            """
-            Vp = self.V[self.imax_fit_rf]
-            tp = self.td[self.imax_fit_rf]
-            """
-            Vp = self.Vp_rf
-            tp = self.tp_rf
-            imax_fit = self.imax_fit_rf
+        # check if there are any peaks to fit to handle
+        # empty fit groups
+        if ff[0] == ff[1]:
+            # there are no peak in this group
+            no_peaks = True
+            sl = slice(-1,0)
         else:
-            Vp = self.Vp
-            tp = self.tp
-            imax_fit = self.imax_fit
-        # form a slice for the current peaks
-        sl = slice(ff[0], ff[1])
-        # times for the peaks
-        if self.use_refined:
-            tp_fit = self.tp_rf[sl]
-        else:
-            tp_fit = tp[sl]
-        # amplitudes for the peaks
-        Vp_fit = Vp[sl]
-        # array indices into full data arrays for the peaks
-        ipos_fit = imax_fit[sl]
-        # first peak to be fitted is at 0.
-        tpk = tp_fit[0]
+            no_peaks = False
         # time range of fit groups data
         lims_t_start = self.td[lims[0]]
         lims_t_end = self.td[lims[1]]
@@ -437,18 +428,51 @@ class raw_fitting:
         if (it_fit.start == it_fit.stop):
             # nothing to fit continue
             return sl, -1, -1, [], -1.
-        start_fit_time  = self.td[it_fit][0]
-        end_fit_time = self.td[it_fit][-1]
-        # determine if the peaks are in a boundar region
-        in_boundary = ((tp_fit - lims_t_start) < self.boundary) | ((lims_t_end - tp_fit) <self. boundary)
+        # boundary start and stop times
         bdry_start = lims_t_start + self.boundary
         bdry_end = lims_t_end - self.boundary
-        # place first peak at 0
-        tt = self.td[it_fit] - tpk
-        Vt = self.V[it_fit] 
-        # initialize fortran fit
-        t_peaks = tp_fit - tp_fit[0]
-        n_peaks = Vp_fit.shape[0]
+        # prepare good peak data for fitting
+        if no_peaks:
+            # set 0 for fitting at start of time range
+            tpk = self.td[it_fit][0]
+            tt = self.td[it_fit] - tpk
+            Vt = self.V[it_fit] 
+            Vp_fit = np.array([]).astype('float')
+            tp_fit = np.array([]).astype('float')
+            t_peaks = np.array([]).astype('float')
+            in_boundary = np.array([]).astype('bool')
+            n_peaks = 0
+        else:
+            if (self.use_refined):
+                # only used good refined positions
+                """
+                Vp = self.V[self.imax_fit_rf]
+                tp = self.td[self.imax_fit_rf]
+                """
+                Vp = self.Vp_rf
+                tp = self.tp_rf
+            else:
+                Vp = self.Vp
+                tp = self.tp
+            # form a slice for the current peaks
+            sl = slice(ff[0], ff[1])
+            # times for the peaks
+            if self.use_refined:
+                tp_fit = self.tp_rf[sl]
+            else:
+                tp_fit = tp[sl]
+            # amplitudes for the peaks
+            Vp_fit = Vp[sl]
+            # first peak to be fitted is at 0.
+            tpk = tp_fit[0]
+            # determine if the peaks are in a boundar region
+            in_boundary = ((tp_fit - lims_t_start) < self.boundary) | ((lims_t_end - tp_fit) <self. boundary)
+            # place first peak at 0
+            tt = self.td[it_fit] - tpk
+            Vt = self.V[it_fit] 
+            # initialize fortran fit
+            t_peaks = tp_fit - tp_fit[0]
+            n_peaks = Vp_fit.shape[0]
         # initialize vary codes array
         vc = np.array(self.vary_codes_bkg + [1 for v in Vp_fit])
         # initalize fit
@@ -506,7 +530,10 @@ class raw_fitting:
             else:
                 B.pl.title('Not shifted fit groups')
             self.plot -=1
-            
+        if self.correct_data:
+            # subract fitted background from data
+            p = np.polynomial.Polynomial(bkg) # background polynomial
+            self.V_corr[it_fit] = Vt - p(tt)
 
         LF.lfitm1.free_all()
         # return fit results
@@ -652,7 +679,7 @@ class raw_fitting:
         Parameters
         ----------
         new_row : Bool, optional
-            Create a new row with new versionnumber (default = False)
+            Create a new row with new version number (default = False)
         Returns
         -------
         None.
@@ -685,5 +712,47 @@ class raw_fitting:
         q_where = f'Shot = {self.channel_data.shot} AND Channel = {self.channel_data.channel} AND Version = {version}'
         q_what = f'file_name = "{o_file}"'
         db.writetodb(self.channel_data.db_file, q_what, q_table, q_where)
+        
+    def save_corr(self):
+        """
+        save a background subtracted file, that can be used later for a refined analysis. The file is stored
+        in the same directory as the raw data
+
+        Parameters
+        ----------
+        new_row : Bool, optional
+            Create a new row with new version number (default = False)
+        Returns
+        -------
+        None.
+
+        """    
+        shot = self.channel_data.par['shot']
+        channel = self.channel_data.par['channel']
+        version = self.channel_data.par['version']
+        # dbfile = self.channel_data.db_file
+        
+        data_dir =  self.channel_data.par['root_dir'] + self.channel_data.par['exp_dir']
+        file_name = os.path.splitext(self.channel_data.par['exp_file'])[0]
+        
+        o_file = data_dir + file_name + f'_{shot}_{channel}_{version}.hdf'
+        n_lines = self.td.shape[0]
+        # create data sets
+        hdf_file = h5py.File(o_file, "w")
+        sV = (self.V_corr*self.corrected_data_scale).astype('int16')
+        # compressed data file of integers
+        V_corr_dataset = hdf_file.create_dataset('V_corr', sV.shape, data = sV, compression = 'gzip')
+        V_corr_dataset.attrs['t0'] = self.td[0]
+        V_corr_dataset.attrs['dt'] = self.dt
+        V_corr_dataset.attrs['V_corr_scale'] = self.corrected_data_scale
+        hdf_file.close()
+        print("Wrote : ", n_lines, " lines to the output file: ", o_file)        
+        
+        # store the file name in the database
+        q_table  = 'Raw_Fitting'
+        q_where = f'Shot = {self.channel_data.shot} AND Channel = {self.channel_data.channel} AND Version = {version}'
+        q_what = f'file_name_corrected = "{o_file}"'
+        db.writetodb(self.channel_data.db_file, q_what, q_table, q_where)       
+        
         
 

@@ -32,7 +32,28 @@ shot = 30121
 channel = 3
 version = 0
 
+"""
+# for channel 2 comparisons
+data_dir = f'./Analysis_Results/{shot}/Raw_Fitting/'
+file_name = 'fit_results_30121_2_0_0.000_0.500_21_07_2022_12_50_14.npz'
+file_name = 'fit_results_30121_2_0_0.000_0.500_21_07_2022_12_55_11.npz'
+
+ra = rac.rate_analysis(dbfile, shot, channel, Afit_file=data_dir + file_name)
+"""
+
+
+"""
+# for channel 1 comparisons
+data_dir = f'./Analysis_Results/{shot}/Raw_Fitting/'
+file_name = 'fit_results_30121_1_0_0.000_0.500_21_07_2022_13_14_28.npz'
+#file_name = 'fit_results_30121_1_0_0.000_0.500_21_07_2022_13_17_07.npz'
+#file_name = 'fit_results_30121_1_0_0.000_0.500_21_07_2022_13_19_25.npz'
+
+ra = rac.rate_analysis(dbfile, shot, channel, Afit_file=data_dir + file_name)
+"""
+
 ra = rac.rate_analysis(dbfile, shot, channel)
+
 ra.time_slice_data()
 ra.make_2d_histo()
 
@@ -43,9 +64,15 @@ ra.plot_results()
 
 #%%
 B.pl.figure(figsize = (16,4))
-
+# raw data
 # use keywords vmin, vmax to set z-range
 ra.plot_2d(raw = True)
+
+
+# fitted data
+B.pl.figure(figsize = (16,4))
+# use keywords vmin, vmax to set z-range
+ra.plot_2d(raw = False)
 
 #%% save rate results
 

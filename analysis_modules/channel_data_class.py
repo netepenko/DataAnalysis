@@ -23,6 +23,8 @@
 
 import numpy as np
 import h5py  # HDF file handling
+import os
+import sys
 from . import database_operations as db
 from . import utilities as UT
 from . import data_plotting
@@ -44,11 +46,32 @@ us = 1.e6
 
 to_bool = {'True':True, 'False':False}
 
+# sllowable file types
+
+
+
 class channel_data():
 
 
     # initialize the class instance
-    def __init__(self, shot, channel, db_file, version = None, result_root = None, scan_only = False, Vscan_s = 0.1, Vscan_th = 0.15):
+    def __init__(self, shot, channel, db_file, 
+                 version = None,
+                 file_type = 'raw',
+                 result_root = None, 
+                 scan_only = False, 
+                 Vscan_s = 0.1, 
+                 Vscan_th = 0.15):
+        # dictionary of load data functions
+        self.load_data_dict = {'raw':self.load_raw_data,
+                          'corrected':self.load_hdf_data,
+                          'filtered':self.load_npz_data}
+        file_types = list(self.load_data_dict.keys())
+        if not file_type in file_types:
+            print(f'Unknown file type {file_type} allowable values are {file_types}')
+            return None
+        else:
+            self.file_type = file_type
+        
         # if version is not specified take the highest one
         self.par = {}  # parameters dictionary initialization
         self.var = {}  # class variables dictionarry
@@ -77,11 +100,14 @@ class channel_data():
         self.par['channel'] = channel
         self.par['version'] = version
         self.psize = 5
+        self.N_pulser_events = 0
         if result_root is None:
             self.par['result_root'] = './Analysis_Results/'
         else:
             self.par['result_root'] = result_root
 
+    def load_data(self, **kwargs):
+        self.load_data_dict[self.file_type](**kwargs)
 
     def read_database_par(self):
         # read from database Raw_Fitting table interval limits for analysis
@@ -113,7 +139,15 @@ class channel_data():
         if not db.check_condition(dbfile, 'Raw_Fitting' , wheredb_version):
             print(f'table Raw_Fitting does not contain data for {wheredb_version}')
             return -1       
-
+        
+        # update the file name if corrected data are to be used
+        if self.file_type == 'corrected':
+            (file_name,) = db.retrieve(dbfile, 'file_name_corrected', 'Raw_Fitting', wheredb_version)[0]
+            if file_name is None:
+                sys.exit(f'No corrected file name found in Raw_Fitting for {wheredb_version}')
+            self.par['exp_file'] = os.path.split(file_name)[-1]
+        
+        
         self.par['dtmin'], self.par['dtmax'] = np.asarray(db.retrieve(dbfile, 'dtmin, dtmax', 'Raw_Fitting', wheredb_version)[0])*us
         # read other parameters
 
@@ -160,7 +194,8 @@ class channel_data():
         print('Analysis results will be placed in: ', self.var['res_dir'])
         return 0
 
-    def load_data(self):
+    
+    def load_raw_data(self, **kwargs):
         # --------------------------------
         # ######## Load raw data #########
         self.data_filename =  self.par['root_dir'] + self.par['exp_dir'] + self.par['exp_file']
@@ -218,15 +253,39 @@ class channel_data():
         # --------------------------------
         # ######## Load raw data #########
         if file_name is None:
-            self.data_filename =  self.par['exp_dir'] + self.par['exp_file']
+            self.data_filename =  self.par['root_dir'] + self.par['exp_dir'] + self.par['exp_file']
         else:
             self.data_filename = file_name
         self.f = np.load(self.data_filename)
         d = self.f
         print("--------------------- Get npz data ------------------------")
-        self.td = d['time']
+        self.td = d['time']*us
         self.Vps = d['signal']
         self.dt = d['time'][1] - d['time'][0]
+        print("-----------------------Data loaded-------------------------")
+        # add pulser to data if add_pulser parameter set to True
+        if self.par['add_pulser']:
+            self.add_pulser()
+
+    def load_hdf_data(self, file_name = None):
+        # --------------------------------
+        # ######## Load raw data #########
+        if file_name is None:
+            self.data_filename =  self.par['root_dir'] + self.par['exp_dir'] + self.par['exp_file']
+        else:
+            self.data_filename = file_name
+        print("--------------------- Get hdf data ------------------------")
+        f = h5py.File(self.data_filename, 'r')
+        # load the data set for corrected data
+        Vc = f['V_corr']
+        scale = Vc.attrs['V_corr_scale']
+        Vd = Vc[:]/scale
+        dt = Vc.attrs['dt']
+        t0 = Vc.attrs['t0']
+        td = t0 + dt*np.arange(Vd.shape[0], dtype=float)
+        self.Vps = Vd
+        self.dt = dt
+        self.td = td
         print("-----------------------Data loaded-------------------------")
         # add pulser to data if add_pulser parameter set to True
         if self.par['add_pulser']:
@@ -261,6 +320,7 @@ class channel_data():
         # number of pulser events
         Delta_t = (dtmax - dtmin)
         N_events = int(self.par['pulser_rate'] * Delta_t/us)
+        self.N_pulser_events = N_events
 
         try:
             Vtotal = self.Vtotal

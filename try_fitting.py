@@ -31,7 +31,8 @@ dbfile = 'New_MainDB1.db'
 #%% normal loading data for analysis
 
 shot = 30121; channel = 3
-cc = cdc.channel_data(shot, channel, dbfile)
+# cc = cdc.channel_data(shot, channel, dbfile, file_type='corrected')
+cc = cdc.channel_data(shot, channel, dbfile, file_type='raw')
 cc.read_database_par()
 cc.load_data()
 
@@ -58,6 +59,7 @@ ps.save_parameters(cc.db_file)
 #%% ready for raw fitting
 
 rf = RFC.raw_fitting(cc, refine_positions=True)
+rf.correct_data = True
 rf.fit_progress = 1000
 rf.find_peaks(N_close = 2)
 rf.check_cov = False
@@ -71,8 +73,8 @@ print(f'Created {rf.fg.shape[0]} fit groups')
 #%%
 B.pl.figure()
 # find a fit group for a certain time in us
-ng = rf.find_fitgroup(246721)
-
+ng = rf.find_fitgroup(303500)
+#ng = 4
 rf.plot_fit_group(ng, shifted = False, warnings = True)
 rf.plot_fit_group(ng, shifted = True, warnings = True)
 
@@ -81,3 +83,7 @@ rf.fit_data()
 
 #%%
 rf.save_fit()
+
+#%% 
+
+rf.save_corr()

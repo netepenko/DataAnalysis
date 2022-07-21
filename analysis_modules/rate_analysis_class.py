@@ -142,9 +142,10 @@ class rate_analysis:
         self.par['h_bins']=h_bins
 
 
-        (draw_p, draw_t, draw_sum) = db.retrieve(dbfile,'draw_p, draw_t, draw_sum', 'Rate_Analysis', wheredb)[0]
+        (draw_p, draw_t, draw_pul,draw_sum) = db.retrieve(dbfile,'draw_p, draw_t, draw_pul, draw_sum', 'Rate_Analysis', wheredb)[0]
         self.par['draw_p']=UT.Bool(draw_p)
         self.par['draw_t']=UT.Bool(draw_t)
+        self.par['draw_pul']=UT.Bool(draw_pul)
         self.par['draw_sum']=UT.Bool(draw_sum)
 
 
@@ -214,7 +215,7 @@ class rate_analysis:
         draw_sum = self.par['draw_sum']
 
         #if pulser were added
-        add_pulser=self.par['add_pulser']
+        draw_pulser=self.par['draw_pul']
         
         dt = self.par['time_slice_width']*us
 
@@ -227,7 +228,7 @@ class rate_analysis:
             B.plot_exp(self.slice_t/us, self.A_st/dt*us, self.dA_st/dt*us, color = 'g', ecolor='grey', capsize = 0.)
 
         # pulser sum signal
-        if add_pulser:
+        if draw_pulser:
             B.plot_exp(self.slice_t/us, self.A_pul/dt*us, self.dA_pul/dt*us, color = 'm', ecolor='grey', capsize = 0.)
 
         # Total signal
@@ -318,7 +319,7 @@ class rate_analysis:
         h_range = (h_min, h_max)
 
         #if pulser were added
-        add_pulser=self.par['add_pulser']
+        add_pulser=self.par['draw_pul']
         # no histo fitting at this time
         fit_histos = False
         
