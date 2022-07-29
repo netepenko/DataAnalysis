@@ -82,7 +82,16 @@ class raw_fitting:
     
     Call to to the fitting of raw data
     """
-    def __init__(self, channel_data, tmin = None, tmax = None, plot=0, plot_s = 0, start_plot_at = None, refine_positions = False, use_refined = False, scan_only = False, n_check_peaks = 10000):
+    def __init__(self, channel_data, 
+                 tmin = None, tmax = None, 
+                 plot=0, plot_s = 0, start_plot_at = None, 
+                 refine_positions = False, 
+                 use_refined = False, 
+                 scan_only = False, 
+                 correct_data = False,
+                 check_cov = False,
+                 fit_progress = 1000,
+                 n_check_peaks = 10000):
         """
         create an instance for fitting the peaks
 
@@ -104,6 +113,17 @@ class raw_fitting:
             calculate refined peak positions by fitting a parabola to top of peaks (default = False)
         use_refined: bool, optional
             use refined peak positions in fitting. (default = False)
+        scan_only: bool, optional
+            quick scan to check if there are valid data. Returns true is >= n_check_peaks are found (default = False)
+        correct_data: bool, optional
+            subtract fitted background from data and save to new file for further analysis (default = False)
+        check_cov: bool, optional
+            check that the covariance matrix  diagonal is everywhere positive (default = False)
+        fit_progress: int, optional
+            number of fits after which a progess message is printed during fitting (default = 1000)
+        n_check_peaks: int, optional
+            minimum number of peaks needed to declare that there are valid data ins the file (default = 10000)
+            
 
         Returns
         -------
@@ -113,20 +133,19 @@ class raw_fitting:
 
         self.plot = plot  # number of fit groups to plot
         self.plot_s = plot_s # number of shifted fit groups to plot
-        self.n_check_peaks = n_check_peaks
+        self.n_check_peaks = n_check_peaks  # min. nummber of peaks found to declare that there are data
         if start_plot_at is None:
             self.start_plot_at = tmin
         else:
             self.start_plot_at = start_plot_at
-        
         self.channel_data = channel_data
 
-        self.fit_progress = 100
+        self.fit_progress = fit_progress
         self.refine_positions = refine_positions
         self.use_refined = use_refined
-        self.check_cov = False
+        self.check_cov =  check_cov
 
-        self.correct_data = False
+        self.correct_data = correct_data
         self.corrected_data_scale = 10000  # resolution 0.1 mV for saved data as integers
 
         if scan_only:
@@ -219,11 +238,10 @@ class raw_fitting:
         imin = pmin[:n_both]
         self.imin = imin        
         # make sure the number of minima and maxima are the same
-        ## get the indices of peaks higher then threshold
+        ## get the indices of peaks higher than threshold
         ipeak_tr = np.where(self.V[imax]>Vth)[0]
         self.ipeak_tr = ipeak_tr
         #choose minimums close to previous maximum (to filter out electrical switching noise peaks)
-        # reject of time difference < 0.5 us
         close_time = np.where((self.td[imin][ipeak_tr]-self.td[imax][ipeak_tr])<min_delta_t)[0] 
         self.close_time = close_time
         # check if next minimum is not too negative (removing switching noize)        
@@ -298,8 +316,8 @@ class raw_fitting:
             print(f'fit group {ig} does not exist')
             return
         
-        sl, fitted_A, sig_fitted_A, bkg, chisq, in_boundary = self.fit_fit_group(fg[ig], lims[ig],  plot_fit = True, warnings = warnings, shifted = shifted)
-        print('fit returns: ', sl, fitted_A, sig_fitted_A, bkg, chisq, in_boundary)
+        sl, fitted_A, sig_fitted_A, bkg_val, bkg, chisq, in_boundary = self.fit_fit_group(fg[ig], lims[ig],  plot_fit = True, warnings = warnings, shifted = shifted)
+        print('fit returns: ', sl, fitted_A, sig_fitted_A, bkg_val, bkg, chisq, in_boundary)
         
         return 
         
@@ -483,6 +501,9 @@ class raw_fitting:
         fitted_A = np.copy(LF.lfitm1.a[self.bkg_len:])
         # get background parameters
         bkg = np.copy(LF.lfitm1.a[:self.bkg_len])
+        p = np.polynomial.Polynomial(bkg) # background polynomial
+        # background value at peak location
+        bkg_val = p(tp_fit - tpk)
         # get covariance matrix
         cov = np.copy(LF.lfitm1.covar)
         if self.check_cov:
@@ -510,7 +531,7 @@ class raw_fitting:
                     B.pl.title('Shifted fit groups, bad fit')
                 else:                  
                     B.pl.title('Not shifted fit groups, bad fit')
-            return sl, -1, -1, np.array([]), chisq, np.array([])
+            return sl, -1, -1, -1, np.array([]), chisq, np.array([])
         if (plot_fit and (len(tt)!= 0) ):
             B.pl.figure()
             p = np.polynomial.Polynomial(bkg) # background
@@ -537,7 +558,7 @@ class raw_fitting:
 
         LF.lfitm1.free_all()
         # return fit results
-        return sl, fitted_A, sig_fitted_A, bkg, chisq, in_boundary
+        return sl, fitted_A, sig_fitted_A, bkg_val, bkg, chisq, in_boundary
             
     def fit_data(self, f_start = 0, f_end = None):
         """
@@ -566,9 +587,12 @@ class raw_fitting:
         self.A_fit = np.zeros_like(self.tp)
         self.sig_A_fit = np.zeros_like(self.tp)
         
+        
         # bkg fit parameters
         self.bkg_par = np.zeros( shape = (len(self.tp), self.bkg_len)) 
-    
+        # bkg values at peak location
+        self.bkg_val = np.zeros_like(self.tp)
+        
         N_fitted = 0
         
         ifailed = 0
@@ -577,6 +601,8 @@ class raw_fitting:
         fg = self.fg[f_start:f_end]
         lims = self.fg_limits[f_start:f_end]
         fg_n_peaks = self.fg_n_peaks[f_start:f_end]
+        
+        n_plot = self.plot
 
         # start time for timer
         t_start = time.perf_counter()
@@ -586,6 +612,7 @@ class raw_fitting:
         print(20*'=' + ' first pass ' + 20*'=')
         for i,ff in enumerate(fg):
             ll = lims[i]
+            tt_0 = self.td[ll[0]]
             # print information on the current status of fitting
             N_fitted += fg_n_peaks[i]
             if (i%self.fit_progress == 0) & (i!=0):
@@ -596,13 +623,19 @@ class raw_fitting:
                     a_rate = float(N_fitted)/t_diff
                     frac = N_fitted/Np*100.
                 print(f'Fit {i} {frac:.1f}, % completed, elapsed time {t_diff:.3f}, rate = {a_rate:.1f} Hz')
-            sl, fitted_A, sig_fitted_A, bkg, chisq, in_boundary = self.fit_fit_group(ff, ll)
+            if (n_plot > 0) and (tt_0 >= self.start_plot_at):
+                n_plot -= 1
+                plot_fit = True
+            else:
+                plot_fit = False
+            sl, fitted_A, sig_fitted_A, bkg_val, bkg, chisq, in_boundary = self.fit_fit_group(ff, ll, plot_fit = plot_fit)
             # get the relevant fit parameters
             if (chisq > 0.):
                 # its_shift.append((tp_fit, sl, Vp_fit, chisq, np.copy(LF.a), np.copy(LF.covar)))
                 # same the values
                 self.A_fit[sl] = fitted_A
                 self.sig_A_fit[sl] = sig_fitted_A
+                self.bkg_val[sl] = bkg_val
                 self.bkg_par[sl] = bkg
                 self.in_boundary[sl] = in_boundary
             else:
@@ -626,9 +659,13 @@ class raw_fitting:
         self.sig_A_fit_s = np.zeros_like(self.tp)
         # fit parameters
         self.bkg_par_s = np.zeros( shape = (len(self.tp), self.bkg_len)) 
+        # bkg values at peak location
+        self.bkg_val_s = np.zeros_like(self.tp)
         
         print('new start time: ', t_start)
         # fit shifted set
+
+        n_plot_s = self.plot_s
 
         fg_shift = self.fg_shift[f_start:f_end]
         lims_shift = self.fg_limits_shift[f_start:f_end]
@@ -646,13 +683,19 @@ class raw_fitting:
                     a_rate = float(N_fitted)/t_diff
                     frac = N_fitted/Np*100.                    
                     print(f'Fit {i} {frac:.1f}, % completed, elapsed time {t_diff:.3f}, rate = {a_rate:.1f} Hz')
-            sl, fitted_A, sig_fitted_A, bkg, chisq, in_boundary = self.fit_fit_group(ff, ll)
+            if (n_plot_s > 0) and (tt_0 >= self.start_plot_at):
+                n_plot_s -= 1
+                plot_fit = True
+            else:
+                plot_fit = False
+            sl, fitted_A, sig_fitted_A, bkg_val, bkg, chisq, in_boundary = self.fit_fit_group(ff, ll, plot_fit = plot_fit)
             # get the relevant fit parameters
             if (chisq > 0.):
                 # its_shift.append((tp_fit, sl, Vp_fit, chisq, np.copy(LF.a), np.copy(LF.covar)))
                 # same the values
                 self.A_fit_s[sl] = fitted_A
                 self.sig_A_fit_s[sl] = sig_fitted_A
+                self.bkg_val_s[sl] = bkg_val
                 self.bkg_par_s[sl] = bkg
             else:
                 ifailed1 += 1
@@ -669,9 +712,10 @@ class raw_fitting:
         self.A_fit[self.in_boundary] = self.A_fit_s[self.in_boundary]
         self.sig_A_fit[self.in_boundary] = self.sig_A_fit_s[self.in_boundary]
         self.bkg_par[self.in_boundary] = self.bkg_par_s[self.in_boundary]
+        self.bkg_val[self.in_boundary] = self.bkg_val_s[self.in_boundary]
         
         
-    def save_fit(self, new_row = False):
+    def save_fit(self, new_row = False, overwrite = False):
         """
         save the data as numpy compressed data files at the locations indicated by
         in the data base
@@ -680,6 +724,8 @@ class raw_fitting:
         ----------
         new_row : Bool, optional
             Create a new row with new version number (default = False)
+        overwrite: Bool, optional
+            Overwrite existing file (default = False)
         Returns
         -------
         None.
@@ -700,28 +746,35 @@ class raw_fitting:
         o_file = f'{o_dir}/fit_results_{shot}_{channel:d}_{version:d}_{self.tmin:5.3f}_{self.tmax:5.3f}.npz'
         if  not os.path.exists(os.path.dirname(o_file)):
             os.makedirs(os.path.dirname(o_file))
-        if os.path.isfile(o_file):
+        if (not overwrite) and os.path.isfile(o_file):
             fn = os.path.splitext(o_file)
             o_file= fn[0] + '_' + time.strftime('%d_%m_%Y_%H_%M_%S') + fn[1] 
         n_lines = self.tp.shape[0]
-        np.savez_compressed(o_file, t=self.tp, V=self.Vp, A=self.A_fit, sig_A=self.sig_A_fit, bkg=self.bkg_par)
+        np.savez_compressed(o_file, t=self.tp, V=self.Vp, A=self.A_fit, sig_A=self.sig_A_fit, bkg=self.bkg_par, bkg_val=self.bkg_val)
         print("Wrote : ", n_lines, " lines to the output file: ", o_file)
         self.last_saved_in = o_file
         # store the file name in the database
         q_table  = 'Raw_Fitting'
         q_where = f'Shot = {self.channel_data.shot} AND Channel = {self.channel_data.channel} AND Version = {version}'
-        q_what = f'file_name = "{o_file}"'
+        q_what = f'Result_File_Name = "{o_file}"'
         db.writetodb(self.channel_data.db_file, q_what, q_table, q_where)
+
+        # store the inpu file name in the database
+        q_table  = 'Raw_Fitting'
+        q_where = f'Shot = {self.channel_data.shot} AND Channel = {self.channel_data.channel} AND Version = {version}'
+        q_what = f'Input_File_Name = "{self.channel_data.data_filename}"'
+        db.writetodb(self.channel_data.db_file, q_what, q_table, q_where)
+
         
-    def save_corr(self):
+    def save_corr(self, keep_iteration = False):
         """
         save a background subtracted file, that can be used later for a refined analysis. The file is stored
         in the same directory as the raw data
 
         Parameters
         ----------
-        new_row : Bool, optional
-            Create a new row with new version number (default = False)
+        keep_iteration:  Bool, optional
+            Do nto change the iteration number. Default = False
         Returns
         -------
         None.
@@ -730,14 +783,45 @@ class raw_fitting:
         shot = self.channel_data.par['shot']
         channel = self.channel_data.par['channel']
         version = self.channel_data.par['version']
-        # dbfile = self.channel_data.db_file
+        dbfile = self.channel_data.db_file
+        # get raw file name
+        which_shot = f'Shot = {shot}'
+        raw_exp_dir, raw_exp_file = db.retrieve(dbfile,  'Folder, File_Name', 'Shot_List', which_shot)[0]
+        raw_name, raw_ext =  os.path.splitext(raw_exp_file)
         
-        data_dir =  self.channel_data.par['root_dir'] + self.channel_data.par['exp_dir']
-        file_name = os.path.splitext(self.channel_data.par['exp_file'])[0]
+        # get current exp. file name
+        exp_file = self.channel_data.par['exp_file']
         
-        o_file = data_dir + file_name + f'_{shot}_{channel}_{version}.hdf'
+        # directory to store the corrected files
+        corr_folder = raw_exp_dir + 'corrected/'
+        corr_dir = self.channel_data.par['root_dir'] + corr_folder
+        if  not os.path.exists(corr_dir): # create the directory if it does not exist
+            os.makedirs(corr_dir)        
+        
+        # analyze file name to determine iteration number
+        if exp_file == raw_exp_file:
+            f_dir = raw_exp_dir
+            f_name = raw_name
+            f_ext = raw_ext
+        else:
+            f_dir, f_full_name = os.path.split(exp_file)
+            f_name, f_ext = os.path.splitext(f_full_name)
+
+        if f_ext in [raw_ext,'.npz']:  # a raw or filtered file file
+            iteration = 0
+            f_name = raw_name + f'_{shot}_{channel}_{version}_{iteration}'
+        elif f_ext == '.hdf':
+            ff = f_name.split('_')
+            iteration = int(ff[-1])
+            if not keep_iteration:
+                iteration += 1  # get old iteration number and increase it
+            ff[-1] = f'{iteration}'
+            f_name = '_'.join(ff) # assemble new file name
+        file_name = f_name + '.hdf' 
+        
+        o_file = corr_dir + file_name
         n_lines = self.td.shape[0]
-        # create data sets
+        # create hdf data sets
         hdf_file = h5py.File(o_file, "w")
         sV = (self.V_corr*self.corrected_data_scale).astype('int16')
         # compressed data file of integers
@@ -748,11 +832,23 @@ class raw_fitting:
         hdf_file.close()
         print("Wrote : ", n_lines, " lines to the output file: ", o_file)        
         
-        # store the file name in the database
+        # store the file name in the database in the Raw_Fitting table
         q_table  = 'Raw_Fitting'
-        q_where = f'Shot = {self.channel_data.shot} AND Channel = {self.channel_data.channel} AND Version = {version}'
-        q_what = f'file_name_corrected = "{o_file}"'
-        db.writetodb(self.channel_data.db_file, q_what, q_table, q_where)       
+        q_where = f'Shot = {shot} AND Channel = {channel} AND Version = {version}'
+        q_what = f'Corrected_Data_File_Name = "{o_file}"'
+        db.writetodb(self.channel_data.db_file, q_what, q_table, q_where)      
         
-        
+        # keep track of corrected file in the Shot_list_Correted table
+        q_table  = 'Shot_List_Corrected'
+        q_where = f'Shot = {shot} AND Channel = {channel} AND Version = {version}'
+        q_where_iter = f'Shot = {shot} AND Channel = {channel} AND Version = {version} AND Iteration = {iteration}'
+
+        q_names =  ['Shot',    'Channel',   'Version',    'Iteration',   'File_Name',      'Folder',           'Comment']        
+        q_values = [shot,      channel,     version, iteration,     f'"{file_name}"', f'"{corr_folder}"','"No Comment"' ] 
+        # create of update the corresponding entry
+        if not db.check_condition(self.channel_data.db_file, q_table, q_where_iter):
+            db.insert_row_into(self.channel_data.db_file, q_table, q_names, q_values)
+        else:
+            db.update_row(self.channel_data.db_file, q_table, q_names, q_values, q_where_iter)
+        # adll done
 

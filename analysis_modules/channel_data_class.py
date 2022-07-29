@@ -48,19 +48,51 @@ to_bool = {'True':True, 'False':False}
 
 # sllowable file types
 
-
-
 class channel_data():
-
 
     # initialize the class instance
     def __init__(self, shot, channel, db_file, 
                  version = None,
+                 data_version = None,
                  file_type = 'raw',
+                 iteration = None,
                  result_root = None, 
                  scan_only = False, 
                  Vscan_s = 0.1, 
                  Vscan_th = 0.15):
+        """
+        load data for a digitizer channel and setup the necessary parameters for further analysis
+
+        Parameters
+        ----------
+        shot : TYPE
+            Shot Number
+        channel : TYPE
+            DESCRIPTION.
+        db_file : database file with the parameters
+            DESCRIPTION.
+        version : TYPE, optional
+            analysis version number. The default is None.
+        data_version : TYPE, optional
+            analysis version number for the corrected data file to be used. The default is None.
+        file_type : TYPE, optional
+            channel data file type: raw, corrected, filtered . The default is 'raw'.
+        iteration : TYPE, optional
+            iteration number of corrected data file. The default is None.
+        result_root : TYPE, optional
+            rood directory for the analysis results. The default is None.
+        scan_only : TYPE, optional
+            on scan the data no real analysis. The default is False.
+        Vscan_s : TYPE, optional
+            V_step for scanning peak finding. The default is 0.1.
+        Vscan_th : TYPE, optional
+            V thershold for scanning peak finding. The default is 0.15.
+
+        Returns
+        -------
+        Object
+
+        """
         # dictionary of load data functions
         self.load_data_dict = {'raw':self.load_raw_data,
                           'corrected':self.load_hdf_data,
@@ -85,15 +117,21 @@ class channel_data():
             wheredb =  f'Shot = {shot} AND Channel = {channel}'
             e_msg = f'No data for shot {shot} and  channel {channel} in Rate Analysis'
             db.check_data(db_file, 'Raw_Fitting', wheredb, e_msg)
-            (version, ) = db.retrieve(db_file, 'Version','Raw_Fitting', wheredb)[-1]        
+            (version, ) = db.retrieve(db_file, 'Version','Raw_Fitting', wheredb)[-1]   
+        if data_version is None:
+            self.data_version = version
+        else:
+            self.data_version = data_version
         self.shot = shot
         self.scan_only = scan_only
         self.shot_str = f'{self.shot:d}'
         self.channel = channel
         self.db_file = db_file
-        self.Version = version
+        self.version = version
+        self.iteration = iteration
         self.wheredb = f'Shot = {shot:d} AND Channel = {channel:d}'
-        self.wheredb_version = self.wheredb + f' AND Version = {self.Version:d}'
+        self.wheredb_version = self.wheredb + f' AND Version = {self.version:d}'
+        self.wheredb_data_version = self.wheredb + f' AND Version = {self.data_version:d}'
         # frequently used string to retrieve data from database that indicates shot and chennel
 
         self.par['shot'] = shot
@@ -116,6 +154,7 @@ class channel_data():
         shot = self.shot_str
         wheredb = self.wheredb
         wheredb_version = self.wheredb_version
+        wheredb_data_version = self.wheredb_data_version
         dbfile = self.db_file
         which_shot = f'Shot = {shot}'
         # extract data from Shot_list
@@ -142,10 +181,13 @@ class channel_data():
         
         # update the file name if corrected data are to be used
         if self.file_type == 'corrected':
-            (file_name,) = db.retrieve(dbfile, 'file_name_corrected', 'Raw_Fitting', wheredb_version)[0]
+            (file_name,) = db.retrieve(dbfile, 'Corrected_Data_File_Name', 'Raw_Fitting', wheredb_data_version)[0]
             if file_name is None:
-                sys.exit(f'No corrected file name found in Raw_Fitting for {wheredb_version}')
-            self.par['exp_file'] = os.path.split(file_name)[-1]
+                sys.exit(f'No corrected file name found in Raw_Fitting for {wheredb_data_version}')
+            f_dir, f_name = os.path.split(file_name)
+            self.par['exp_file'] = f_name
+            # remove root_dir from file name
+            self.par['exp_dir'] = f_dir.replace(self.par['root_dir'], '') + '/'
         
         
         self.par['dtmin'], self.par['dtmax'] = np.asarray(db.retrieve(dbfile, 'dtmin, dtmax', 'Raw_Fitting', wheredb_version)[0])*us
@@ -154,7 +196,8 @@ class channel_data():
         self.par['poly_order'], self.par['n_peaks_to_fit'] = db.retrieve(dbfile, 'poly_order, n_peaks_to_fit', 'Raw_Fitting', wheredb_version)[0]
         add_pulser, self.par['pulser_rate'], self.par['P_amp'] = db.retrieve(dbfile,  'add_pulser, pulser_rate, P_amp', 'Raw_Fitting', wheredb_version)[0]
         self.par['add_pulser'] = to_bool[add_pulser]
-        self.par['use_threshold'], self.par['Vstep'], self.par['Vth'] = db.retrieve(dbfile,  'use_threshold, Vth, Vstep', 'Raw_Fitting', wheredb_version)[0]
+        use_threshold, self.par['Vth'], self.par['Vstep'] = db.retrieve(dbfile,  'use_threshold, Vth, Vstep', 'Raw_Fitting', wheredb_version)[0]
+        self.par['use_threshold'] = to_bool[use_threshold]
         self.par['min_delta_t'], self.par['max_neg_V'] = db.retrieve(dbfile,  'min_delta_t, max_neg_V', 'Raw_Fitting', wheredb_version)[0]
 
         # laod parameters for finding peaks

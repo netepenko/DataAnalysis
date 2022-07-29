@@ -19,7 +19,7 @@ class db_table_data:
         if values == None:
             self.values = [dict.fromkeys(fields)]
         else:
-            self.values = [dict(zip(fields, v)) for v in values]  # conver array of values to array of dict
+            self.values = [dict(zip(fields, v)) for v in values]  # convert array of values to array of dict
         self.field_names = self.values[0].keys()
         self.special = special
         self.types = types
@@ -82,9 +82,9 @@ def create(db_file):
     shot_list = db_table_data('Shot_List', shot_list_fields, shot_list_types, shot_list_values)
 
     # raw_fitting_table
-    raw_fit_fields = ['Shot', 'Channel', 'Version',               'Comment', 'dtmin', 'dtmax', 'n_peaks_to_fit', 'poly_order', 'add_pulser', 'pulser_rate','P_amp', 'use_threshold', 'Vth', 'Vstep', 'n_sig_low', 'n_sig_high', 'n_sig_boundary', 'sig', 'min_delta_t', 'max_neg_V', 'file_name', 'file_name_corrected']
-    raw_fit_types = ['INT not NULL','INT not NULL','INT not NULL', 'TEXT',    'REAL',  'REAL',  'INT',            'INT',        'TEXT',       'REAL',       'REAL',  'TEXT',          'REAL','REAL',  'REAL',     'REAL',       'REAL'          ,  'REAL',  'REAL',    'REAL',           'TEXT',    'TEXT']
-    raw_fit_values = [29975,          0,             0,        '"No Comment"', 0.01,   0.1,     10,              10,           'True',        1000.,        1.0,    'True',          0.2,   0.2,       3.,           3.,         3.,              0.3,      1e-7,       -.3 ,        '"No File Saved"', '"No File Saved"']
+    raw_fit_fields = ['Shot', 'Channel', 'Version',               'Comment', 'dtmin', 'dtmax', 'n_peaks_to_fit', 'poly_order', 'add_pulser', 'pulser_rate','P_amp', 'use_threshold', 'Vth', 'Vstep', 'n_sig_low', 'n_sig_high', 'n_sig_boundary', 'sig', 'min_delta_t', 'max_neg_V', 'Result_File_Name', 'Corrected_Data_File_Name', 'Input_File_Name']
+    raw_fit_types = ['INT not NULL','INT not NULL','INT not NULL', 'TEXT',    'REAL',  'REAL',  'INT',            'INT',        'TEXT',       'REAL',       'REAL',  'TEXT',          'REAL','REAL',  'REAL',     'REAL',       'REAL'          ,  'REAL',  'REAL',    'REAL',           'TEXT',    'TEXT',    'TEXT']
+    raw_fit_values = [29975,          0,             0,        '"No Comment"', 0.01,   0.1,     10,              10,           'True',        1000.,        1.0,    'True',          0.2,   0.2,       3.,           3.,         3.,              0.3,      1e-7,       -.3 ,        '"No File Saved"', '"No File Saved"', '" "']
 
     raw_fitting = db_table_data('Raw_Fitting', raw_fit_fields, raw_fit_types, [raw_fit_values], special = 'PRIMARY KEY (Shot, Channel, Version)')  # if only 1 row of values enter in backets
 
@@ -109,13 +109,22 @@ def create(db_file):
     Rate_Analysis_types = ['INT not NULL','INT not NULL','INT not NULL', 'TEXT',   'REAL',             'REAL',  'REAL',   'INT',   'TEXT',   'TEXT',   'TEXT',        'TEXT']
     Rate_Analysis_values = [29975,          0,             0,        '"No Comment"', 1.e-3,            0.,      1.4,      160,      '"True"',  '"False"',  '"False"',  '"False"']
 
-    Rate_Analysis_fields+= ['p_min', 'p_max', 't_min', 't_max', 'pul_min', 'pul_max',  'sig_ratio', 'file_name']
-    Rate_Analysis_types += ['REAL',  'REAL',  'REAL',  'REAL',  'REAL',    'REAL',       'REAL', 'TEXT' ]
-    Rate_Analysis_values += [0.6,     0.8,    0.3,      0.5,     0.9,        1.2,        100,  '"No File Saved"']
+    Rate_Analysis_fields+= ['p_min', 'p_max', 't_min', 't_max', 'pul_min', 'pul_max',  'sig_ratio', 'Result_File_Name', 'Input_File_Name']
+    Rate_Analysis_types += ['REAL',  'REAL',  'REAL',  'REAL',  'REAL',    'REAL',       'REAL', 'TEXT', 'TEXT' ]
+    Rate_Analysis_values += [0.6,     0.8,    0.3,      0.5,     0.9,        1.2,        100,  '"No File Saved"',  '" "']
 
     Rate_Analysis = db_table_data('Rate_Analysis', Rate_Analysis_fields, Rate_Analysis_types, [Rate_Analysis_values], special = 'PRIMARY KEY (Shot, Channel, Version)')
 
 
+    # corrected shot list
+    shot_list_corrected_fields = ['Shot',       'Channel',     'Version','      Iteration',   'File_Name', 'Folder', 'Comment']
+    shot_list_corrected_types = ['INT not NULL','INT not NULL','INT not NULL', 'INT not NULL', '""',       '""',      '""']
+    shot_list_corrected_values = [29975,          0,             0,              0,              '"No File"',  '"NO Folder"', '"No comment"']
+    
+    
+    shot_list_corrected = db_table_data('Shot_List_Corrected', shot_list_corrected_fields, shot_list_corrected_types, values = [shot_list_corrected_values], special = 'PRIMARY KEY (Shot, Channel, Version, Iteration)' )
+
+    # ocmbine rates 
     comb_rates_fields = ['Shot', 'Channels', 't_min', 't_max', 'A_min', 'A_max', 'd_time', 'view_dir', 'view_names', 'r_min', 'r_max', 'use_all_variables', 'calc_rate', 'model', 'Comment']
     comb_rates_types = [ 'INT',  'TEXT',     'REAL',  'REAL',  'REAL',  'REAL',  'REAL',   'TEXT',     'TEXT',       'REAL',  'REAL',  'TEXT',              'TEXT',      'TEXT',  'TEXT']
     comb_rates_values = [29975,  '"0,1,2,3"',  0.,       0.5,     0.,      150.e3,  5.e-3,    '"./orbit_public/NSTX_output"', '"nml_orb_NSTX-Case_3_0.3"', 0., 1.5, '"True"',  '"True"', '"Simple Gauss"', '"No Comment"']
@@ -141,7 +150,10 @@ def create(db_file):
         #
         comb_rates.create_table(conn)
         comb_rates.insert_into(conn)
-
+        #
+        shot_list_corrected.create_table(conn)
+        shot_list_corrected.insert_into(conn)
+        
     print("Created DB")
     conn.close()
 
@@ -175,7 +187,7 @@ def check_condition(db_file, table, where):
         except Exception as e:
             print(f'probem with command: {qline}')
             print(f'Error: {e}')
-            return []
+            return False
         res = cur.fetchall()
     conn.close()
     if res == []:
@@ -302,6 +314,47 @@ def writetodb(db_file, params, table, where):
             print(f'Error: {e}')
     conn.close()
 
+#%% insert a new row, this produces an error if there is a uniqueness error
+
+def insert_row_into(db_file, table, names, values):
+    conn = lite.connect(DATA_BASE_DIR + db_file)
+    cur = conn.cursor()
+    p_1 = f'INSERT INTO  {table} ('
+    p_2 = ' VALUES ('
+    for i,d in enumerate(names):
+        p_1 += d + ','
+        p_2 += f'{values[i]}' + ','
+    p1 = p_1[:-1] + ')'
+    p2 = p_2[:-1] + ')'
+    sql = p1 + p2
+    print(sql)
+    with conn:
+        try:
+            cur.execute(sql)
+        except Exception as err:
+            print(f'---> insert_into problem with: {sql}, {err}')
+    # all done
+    conn.close()
+
+#%%  update_row
+def update_row(db_file, table, names, values, where):
+    conn = lite.connect(DATA_BASE_DIR + db_file)
+    cur = conn.cursor()
+    cmd0 = f'UPDATE  {table} SET ' 
+    cmd1 = ','.join( [f'{nn} = {values[i]}' for i,nn in enumerate(names)] )
+    cmd2 = f' WHERE {where}'
+    q_line  = cmd0 + cmd1 + cmd2
+    print(f'update_row: {q_line}')
+    with conn:
+        cur = conn.cursor()
+        try:
+            cur.execute(q_line)
+        except Exception as e:
+            print(f'probem with command: {q_line}')
+            print(f'Error: {e}')
+    conn.close()    
+    
+    
 #%% some utility functions
 def get_shot_list(db_file):
     sl = retrieve(db_file, 'Shot, N_chan', 'Shot_List')

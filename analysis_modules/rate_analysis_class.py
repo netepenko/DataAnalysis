@@ -184,7 +184,7 @@ class rate_analysis:
         self.par['add_pulser'] = UT.Bool(add_pulser)
 
         if Afit_file is None:
-            (Afit_file,) = db.retrieve(dbfile,'file_name', 'Raw_Fitting', wheredb)[0]
+            (Afit_file,) = db.retrieve(dbfile,'Result_File_Name', 'Raw_Fitting', wheredb)[0]
         self.var['Afit_name'] = Afit_file
         dir_name, file_name = os.path.split(Afit_file)
         f_name, f_ext = os.path.splitext(file_name)
@@ -274,7 +274,7 @@ class rate_analysis:
             tmax = tp.max()
         hx_bins = int((tmax - tmin)/dt) + 1
         
-        h_title = f'shot {self.par["shot"]}, channel = {self.par["channel"]}' 
+        h_title = f'shot {self.par["shot"]}, channel: {self.par["channel"]}' 
         
         self.h2 = B.histo2d(tg, Ag, range = [[tmin,tmax],[hy_min,hy_max]], bins = [hx_bins, hy_bins],
                             title = h_title, xlabel = r't[$\mu$ s]', ylabel = 'fitted PH [V]')
@@ -474,8 +474,16 @@ class rate_analysis:
         # store the file name in the database
         q_table  = 'Rate_Analysis'
         q_where = f'Shot = {self.par["shot"]} AND Channel = {self.par["channel"]} AND Version = {version}'
-        q_what = f'file_name = "{o_file}"'
+        q_what = f'Result_File_Name = "{o_file}"'
         db.writetodb(self.dbfile, q_what, q_table, q_where)        
+
+        # store the file name in the database
+        q_table  = 'Rate_Analysis'
+        q_where = f'Shot = {self.par["shot"]} AND Channel = {self.par["channel"]} AND Version = {version}'
+        input_file = self.var['Afit_name']
+        q_what = f'Input_File_Name = "{input_file}"'
+        db.writetodb(self.dbfile, q_what, q_table, q_where)        
+
 
     def save_myself(self):
         """

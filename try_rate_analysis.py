@@ -28,31 +28,23 @@ cdc.db.DATA_BASE_DIR = '/Users/boeglinw/Documents/boeglin.1/Fusion/Fusion_Produc
 dbfile = 'New_MainDB1.db'
 
 #%%
-shot = 30121
-channel = 3
-version = 0
-
-"""
-# for channel 2 comparisons
-data_dir = f'./Analysis_Results/{shot}/Raw_Fitting/'
-file_name = 'fit_results_30121_2_0_0.000_0.500_21_07_2022_12_50_14.npz'
-file_name = 'fit_results_30121_2_0_0.000_0.500_21_07_2022_12_55_11.npz'
-
-ra = rac.rate_analysis(dbfile, shot, channel, Afit_file=data_dir + file_name)
-"""
+shot = 30124
+channel = 2
+version = 1
 
 
 """
+# to select a specific file
+
 # for channel 1 comparisons
 data_dir = f'./Analysis_Results/{shot}/Raw_Fitting/'
-file_name = 'fit_results_30121_1_0_0.000_0.500_21_07_2022_13_14_28.npz'
-#file_name = 'fit_results_30121_1_0_0.000_0.500_21_07_2022_13_17_07.npz'
-#file_name = 'fit_results_30121_1_0_0.000_0.500_21_07_2022_13_19_25.npz'
+
+file_name = 'fit_results_30121_1_0_0.000_0.500_25_07_2022_07_28_29.npz'
 
 ra = rac.rate_analysis(dbfile, shot, channel, Afit_file=data_dir + file_name)
-"""
 
-ra = rac.rate_analysis(dbfile, shot, channel)
+"""
+ra = rac.rate_analysis(dbfile, shot, channel, version = version)
 
 ra.time_slice_data()
 ra.make_2d_histo()

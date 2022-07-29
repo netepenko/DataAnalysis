@@ -28,11 +28,29 @@ dbfile = 'full_shot_listDB.db'
 cdc.db.DATA_BASE_DIR = '/Users/boeglinw/Documents/boeglin.1/Fusion/Fusion_Products/DataAnalysis/'
 dbfile = 'New_MainDB1.db'
 
-#%% normal loading data for analysis
 
-shot = 30121; channel = 3
-# cc = cdc.channel_data(shot, channel, dbfile, file_type='corrected')
-cc = cdc.channel_data(shot, channel, dbfile, file_type='raw')
+#%% duplicate rows for further analysis
+shot = 30124; channel = 1
+
+q_where = f'Shot = {shot} AND Channel = {channel}'
+
+cdc.db.duplicate_row(dbfile, 'Peak_Sampling', q_where )
+cdc.db.duplicate_row(dbfile, 'Rate_Analysis', q_where)
+cdc.db.duplicate_row(dbfile, 'Raw_Fitting', q_where)
+
+#%% normal loading data for analysis  1st pass
+
+shot = 30124; channel = 2; version = 0
+cc = cdc.channel_data(shot, channel, dbfile, file_type='raw', version = version)
+cc.read_database_par()
+cc.load_data()
+
+
+#%% second pass
+
+shot = 30124; channel = 2; version = 1; data_version = 0; iteration = 0
+
+cc = cdc.channel_data(shot, channel, dbfile, file_type='corrected', version = version, data_version = data_version, iteration = iteration)
 cc.read_database_par()
 cc.load_data()
 
@@ -58,23 +76,20 @@ ps.save_parameters(cc.db_file)
 
 #%% ready for raw fitting
 
-rf = RFC.raw_fitting(cc, refine_positions=True)
-rf.correct_data = True
-rf.fit_progress = 1000
-rf.find_peaks(N_close = 2)
-rf.check_cov = False
+rf = RFC.raw_fitting(cc, refine_positions=True, use_refined = True, correct_data = True, fit_progress = 1000)
+rf.find_peaks()     # N_close = 2 is default
+
 
 #%%
-rf.use_refined = True
-
 rf.setup_fit_groups()
 rf.init_fitting()
 print(f'Created {rf.fg.shape[0]} fit groups')
 #%%
 B.pl.figure()
+
 # find a fit group for a certain time in us
-ng = rf.find_fitgroup(303500)
-#ng = 4
+ng = rf.find_fitgroup(342400)
+
 rf.plot_fit_group(ng, shifted = False, warnings = True)
 rf.plot_fit_group(ng, shifted = True, warnings = True)
 
@@ -86,4 +101,4 @@ rf.save_fit()
 
 #%% 
 
-rf.save_corr()
+rf.save_corr(keep_iteration=False)
