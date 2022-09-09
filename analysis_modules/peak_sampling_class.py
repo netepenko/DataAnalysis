@@ -111,7 +111,7 @@ class peak_sampling:
         """
         
         q_from  = 'Peak_Sampling'
-        q_where = f'Shot = {self.shot} AND Channel = {self.channel} AND Version = {self.channel_data.Version}'
+        q_where = f'Shot = {self.shot} AND Channel = {self.channel} AND Version = {self.channel_data.version}'
         
         q_what = 'b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12' 
         
@@ -400,7 +400,7 @@ class peak_sampling:
         """
         # 
         q_table  = 'Peak_Sampling'
-        q_where = f'Shot = {self.channel_data.shot} AND Channel = {self.channel_data.channel} AND Version = {self.channel_data.Version}'
+        q_where = f'Shot = {self.channel_data.shot} AND Channel = {self.channel_data.channel} AND Version = {self.channel_data.version}'
         
         # store the good peak time slices
         q_what = (''.join([f'b{i+1} = {tt[0]/us}, e{i+1} = {tt[1]/us}, ' for i,tt in enumerate(self.good_peak_times)] )).strip()[:-1] # skip last comma
