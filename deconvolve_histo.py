@@ -71,7 +71,7 @@ class voigt_fit:
 
 #%% load histogram
 
-h = B.histo(file = 'ch2_projection.data')
+h = B.histo(file = 'ch3_projection.data')
 h.clear_window()  # needed for histograms loaded from file, this is a bug that needs to be fixed
 
 hc = h.bin_content
@@ -167,7 +167,7 @@ def get_next_iteration(u, psf):
 psf_loc = get_psf(h, vf, fwhm)
 
 hs = hc
-n_iter = 50
+n_iter = 100
 h_iter = []
 h_iter.append(hs)
 for i in np.arange(n_iter):
@@ -178,7 +178,7 @@ h_corr = C.copy(h)
 h_corr.bin_content = hs
 h_corr.title = f'Deconvoluted : {n_iter} iterations'
 
-B.pl.figure()
+B.pl.figure(figsize = (9,4.5))
 h_corr.plot(filled = False, color = 'r')
 
 

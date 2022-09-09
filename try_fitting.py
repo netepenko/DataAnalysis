@@ -30,6 +30,7 @@ dbfile = 'New_MainDB1.db'
 
 
 #%% duplicate rows for further analysis
+"""
 shot = 30124; channel = 1
 
 q_where = f'Shot = {shot} AND Channel = {channel}'
@@ -37,10 +38,11 @@ q_where = f'Shot = {shot} AND Channel = {channel}'
 cdc.db.duplicate_row(dbfile, 'Peak_Sampling', q_where )
 cdc.db.duplicate_row(dbfile, 'Rate_Analysis', q_where)
 cdc.db.duplicate_row(dbfile, 'Raw_Fitting', q_where)
+"""
 
 #%% normal loading data for analysis  1st pass
 
-shot = 30124; channel = 2; version = 0
+shot = 30124; channel = 1; version = 0
 cc = cdc.channel_data(shot, channel, dbfile, file_type='raw', version = version)
 cc.read_database_par()
 cc.load_data()
@@ -48,7 +50,7 @@ cc.load_data()
 
 #%% second pass
 
-shot = 30124; channel = 2; version = 1; data_version = 0; iteration = 0
+shot = 30124; channel = 1; version = 1; data_version = 0; iteration = 0
 
 cc = cdc.channel_data(shot, channel, dbfile, file_type='corrected', version = version, data_version = data_version, iteration = iteration)
 cc.read_database_par()

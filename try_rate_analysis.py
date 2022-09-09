@@ -4,6 +4,8 @@
 
 Created on Fri May  6 15:33:27 2022
 
+example of evaluating shots for good data
+
 @author: boeglinw
 """
 
@@ -29,7 +31,7 @@ dbfile = 'New_MainDB1.db'
 
 #%%
 shot = 30124
-channel = 2
+channel = 1
 version = 1
 
 
