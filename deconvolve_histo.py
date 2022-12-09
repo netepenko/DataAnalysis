@@ -81,8 +81,8 @@ he = h.bin_error
 # fit pulser peak
 # initialize voigt
 vf = voigt_fit(A = 7000, fwhm_L=0.03, fwhm_G=0.01, x0 = 1.0)
-vf.fit_list = [vf.A, vf.x0, vf.fwhm_L, vf.fwhm_G]
-#vf.fit_list = [vf.A, vf.fwhm_L, vf.fwhm_G, vf.x0, vf.b0, vf.b1]
+#vf.fit_list = [vf.A, vf.x0, vf.fwhm_L, vf.fwhm_G]
+vf.fit_list = [vf.A, vf.fwhm_L, vf.fwhm_G, vf.x0, vf.b0, vf.b1]
 
 
 # select fit range (e.g from xlim())
@@ -167,7 +167,7 @@ def get_next_iteration(u, psf):
 psf_loc = get_psf(h, vf, fwhm)
 
 hs = hc
-n_iter = 100
+n_iter = 20
 h_iter = []
 h_iter.append(hs)
 for i in np.arange(n_iter):

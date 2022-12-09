@@ -24,10 +24,6 @@ us = 1e6
 cdc.db.DATA_BASE_DIR = '/Users/boeglinw/Documents/boeglin.1/Fusion/Fusion_Products/MAST_data/'
 dbfile = 'full_shot_listDB.db'
 
-#%% data range
-cdc.db.DATA_BASE_DIR = '/Users/boeglinw/Documents/boeglin.1/Fusion/Fusion_Products/DataAnalysis/'
-dbfile = 'New_MainDB1.db'
-
 
 #%% duplicate rows for further analysis
 """
