@@ -2,7 +2,7 @@
 Data anaylysis procedures controled by parameters stored in a SQLITE data base. The goal of these procedures is to perform a fine analysis of the digitizer files where particle signals are fond and the peak height above a polynomial background is determiend. The measured digitizer data can also be corrected by the fitted backgroup to improve pead finding and fitting in several iteration steps. Using the fittes results 2d histograms are build which can then be used to determine particle rates as a function of time. All results and parameters are recorded in the SQLITE data base. 
 
 
-##Main Content:
+## Main Content:
 
 - *try\_fitting.py*  : perform the multi-stage fitting analysis to obtain the best signal height determinations
 -  *try\_rate\_analysis.py* : determine particle rates and fille 2d time vs signal height histogram
@@ -14,7 +14,7 @@ Data anaylysis procedures controled by parameters stored in a SQLITE data base. 
 
 This an ongoing development and not yet in its final state. 
 
-##Compilation of *.f90 routines
+## Compilation of *.f90 routines
 
 Currently the Makefile might not work. The work around is to compile the 2 needed fortran files as follows:
 
