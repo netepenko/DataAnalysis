@@ -4,11 +4,11 @@ Data anaylysis procedures controled by parameters stored in a SQLITE data base. 
 
 ## Main Content:
 
-- *try\_fitting.py*  : perform the multi-stage fitting analysis to obtain the best signal height determinations
--  *try\_rate\_analysis.py* : determine particle rates and fille 2d time vs signal height histogram
--  *online_analysis.py* : module to for a quick analysis of a shot
--  *analyze\_new\_shot.py* : short example script to analyze a new shot (includes automaticall adding new database entries)
--  *deconvolute\_histo.py* : example of performing a Lucy-Richardson deconvolution of a histogram to improve resolution.
+- *example\_fitting.py*  : perform the multi-stage fitting analysis to obtain the best signal height determinations
+-  *example\_rate\_analysis.py* : determine particle rates and fille 2d time vs signal height histogram
+-  *online\_analysis.py* : module to for a quick analysis of a shot
+-  *online\_analyze\_new\_shot.py* : short example script to analyze a new shot (includes automaticall adding new database entries)
+-  *LR\_deconvolute\_histo.py* : example of performing a Lucy-Richardson deconvolution of a histogram to improve resolution. The point spread function can be fitted either with a modified Voigt function or a sum of gaussian (SOG)
 -  *various .db files* : several example SQLITE data base files - **analysis\_modules** : directory where are the needed modules are located
 
 

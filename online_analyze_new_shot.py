@@ -18,7 +18,7 @@ OA.dbfile = 'new_dbfile.db'
 @author: boeglinw
 """
 import datetime as DT
-import online_analysis as OA
+from analysis_modules import online_analysis as OA
 
 # get current date
 today = DT.datetime.today().strftime('%b-%d-%Y')
@@ -33,15 +33,30 @@ OA.add_shot(OA.dbfile,
             rp_pos = 1.82, 
             rp_setpoint=478.0, 
             t_offset = 0., 
-            n_chan = 4, 
+            channels = [0,1,2,3], 
             comment = '[0,1,2,3]', 
             folder = 'MAST/090913/', 
             date='Sep-09-2013')
 
+
+
+#%% add a new shot
+OA.add_shot(OA.dbfile, 
+            29912 , 
+            'DAQ_200813-121826.hws', 
+            rp_pos = 1.82, 
+            rp_setpoint=479.0, 
+            t_offset = 0., 
+            channels = [1,2,3], 
+            comment = '[1,2,3]', 
+            folder = 'MAST/082013/', 
+            date='Aug-20-2013')
+
 #%%a nalyze the new shot
 
 # setup for new shot
-AS = OA.analyze_shot(30114)
+# AS = OA.analyze_shot(30114)
+AS = OA.analyze_shot(29912, channels = [1,2,3])
 # perform analysis
 AS.analyze_all()
 

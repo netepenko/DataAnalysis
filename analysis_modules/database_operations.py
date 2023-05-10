@@ -534,6 +534,43 @@ def copyrow(db_file, table, where_cp, substitutions):
         writetodb(db_file, substitutions, table,  f' ROWID = {-max_version}')
     # print('q_update = ',  q_update)
 
+
+
+def delete_row(db_file, table, where_del):
+    """
+    Delete a row in a table 
+
+    Parameters
+    ----------
+    db_file : str
+        database file name.
+    table : str
+        table where the row should be deleted.
+    where_del : str
+        selection criteria for row to be deleted (careful !).
+
+    Returns
+    -------
+    None.
+
+    """
+    conn = lite.connect(DATA_BASE_DIR + db_file)
+    
+    if not (check_condition(db_file, table, where_del) ):
+        print(f'--> No data for condition: {where_del} in {table}, nothing done')
+        return 
+    q_line = f'delete from {table} where {where_del};'
+    print(f'{q_line}')
+    with conn:
+        cur = conn.cursor()
+        try:
+            cur.execute(q_line)
+        except Exception as e:
+            print(f'probem with command: {q_line}')
+            print(f'Error: {e}')
+    conn.close()   
+    
+
 #%% Tests
 """
 if __name__ == "__main__":

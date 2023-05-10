@@ -31,10 +31,11 @@ dbfile = 'online_DB.db'
 
 #%% add shot to online data base
 
-def add_shot(dbfile, shot, filename, rp_pos = 2., rp_setpoint = 0, t_offset = 0., n_chan = 4, comment = '[0,1,2,3]', 
+def add_shot(dbfile, shot, filename, rp_pos = 2., rp_setpoint = 0, t_offset = 0., channels = [0,1,2,3] , first_chan = 0, comment = '[0,1,2,3]', 
              folder = 'MAST/090913/', date = 'Jan-01-2023'):
      # add table entries in data base for new shot
      # add Shot_list entry
+     n_chan = len(channels)
      parameters = [f'Shot = {shot}',
                    f'RP_position = {rp_pos}',
                    f'RP_setpoint = {rp_setpoint}',
@@ -48,11 +49,19 @@ def add_shot(dbfile, shot, filename, rp_pos = 2., rp_setpoint = 0, t_offset = 0.
      new_par = ','.join(parameters)
      cdc.db.copyrow(dbfile, 'Shot_list', 'Shot = 99999', new_par)
      # add  corresponding entires to
-     for i in range(n_chan):         
+     for i in channels:         
          cdc.db.copyrow(dbfile, 'Peak_Sampling', f'Shot = 99999 AND Channel = {i}', f'Shot = {shot}' )
          cdc.db.copyrow(dbfile, 'Rate_Analysis', f'Shot = 99999 AND Channel = {i}', f'Shot = {shot}' )
          cdc.db.copyrow(dbfile, 'Raw_Fitting', f'Shot = 99999 AND Channel = {i}', f'Shot = {shot}' )
      return
+
+
+def delete_shot(dbfile, shot):
+    # deletes all channel entries for this shot number
+    cdc.db.delete_row(dbfile, 'Peak_Sampling', f'Shot = {shot}' )
+    cdc.db.delete_row(dbfile, 'Raw_Fitting', f'Shot = {shot}' )
+    cdc.db.delete_row(dbfile, 'Rate_Analysis', f'Shot = {shot}' )
+    return
 
 #%%
 def make_2d_histo(rf,tmin = 0.*cdc.us, 
@@ -90,6 +99,9 @@ def calc_rates(h, Vmin, Vmax):
 
 
 #%% normal loading data for analysis  1st pass
+
+# this is for a quick analysis of the data, no fitting is performed. This is usefule to have a look of the data outised of
+# using digiplot. Is also makes it possible to add the shot data to a sqlite data base
 
 class analyze_shot:
     def __init__(self, shot, channels = [0,1,2,3], version = 0, dbfile = 'online_DB.db'):
