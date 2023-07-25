@@ -161,11 +161,13 @@ class sog_fit:
         self.alpha = BParameter(alpha, 'alpha', positive)
         self.beta = BParameter(beta, 'beta', positive)
         # background
-        self.b0 = BParameter(0., 'b0')
+        self.b0 = BParameter(0., 'b0', positive)
         self.b1 = BParameter(0., 'b1')
-        self.b2 = BParameter(0., 'b2')
+        self.b2 = BParameter(0., 'b2', positive)
         
-        self.fit_list = [self.A1, self.A2, self.A3,self.A4,  self.x01, self.x02, self.x03, self.x04, self.sig1 ,self.sig2, self.sig3, self.sig4]
+        self.fit_list = [self.A1, self.A2, self.A3,self.A4,\
+                         self.x01, self.x02, self.x03, self.x04, \
+                             self.sig1 ,self.sig2, self.sig3, self.sig4]
         
         self.peak_pos = None
 
@@ -339,12 +341,33 @@ x0_gf_fit = xx[np.argmax(vf.total(xx))]
 
 #%% fit pulser peak to get PSF sig SOG
 # initialize voigt
-gf = sog_fit(A1 = 4000, A2 = 2000, A3 = 1000., A4 = 500, x01 = 1.0, x02 = 1., x03 = 1., x04 = 1.0, sig1 = 0.014, sig2 = 0.05, sig3 = 0.07, sig4 = 0.1 )
+gf = sog_fit(A1 = 4000, A2 = 2000, A3 = 1000., A4 = 500, x01 = 1.0, \
+             x02 = 1., x03 = 1., x04 = 1.0, \
+                 sig1 = 0.014, sig2 = 0.05, sig3 = 0.07, sig4 = 0.1 )
 
+# adkust fit list
+# remove from fitting
+#gf.fit_list.remove(gf.x03)
+#gf.fit_list.remove(gf.A3)
+#gf.fit_list.remove(gf.sig3)
+#gf.A3.set(0.)
 
+#gf.fit_list.remove(gf.x04)
+#gf.fit_list.remove(gf.A4)
+#gf.fit_list.remove(gf.sig4)
+#gf.A4.set(0.)
+
+# add lin bkg    
+gf.fit_list += [gf.b0, gf.b1]
 
 # select fit range (e.g from xlim())
-lims = (0.81, 1.2)
+lims = (0.81, 1.4)
+
+
+gf.x01.bound = [0.9,1.1]
+gf.x02.bound = [0.9,1.1]
+gf.x03.bound = [0.9,1.1]
+gf.x04.bound = [0.9,1.1]
 
 sel = get_window(lims, h.bin_center)
 
@@ -357,7 +380,7 @@ top_part = xb[gf(xb) >=gf(xb).max()/2]
 fwhm = top_part[-1] - top_part[0]
 
 # do the fit:
-B.pl.figure()
+B.pl.figure(figsize = (9,4.5))
 h.plot_exp()
 gf.fit(xb, yb, dyb)
 
@@ -391,7 +414,7 @@ h_corr = C.copy(h)
 dh_iter = np.diff(h_iter, axis = 0)
 
 #%%  evaluate iteration results
-i_iter = 40
+i_iter = 199
 h_corr.bin_content = h_iter[i_iter]  # set the corrected bin_content
 h_corr.title = f'Deconvoluted : {i_iter} iterations'
 
