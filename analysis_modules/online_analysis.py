@@ -17,6 +17,7 @@ from analysis_modules import rate_analysis_class as rac
 from analysis_modules import peak_sampling_class as PS
 from analysis_modules import raw_fitting_class as RFC
 
+import os
 
 import LT.box as B
 
@@ -27,6 +28,18 @@ us = 1e6
 #%% This needs to be set globally
 cdc.db.DATA_BASE_DIR = '/Users/boeglinw/Documents/boeglin.1/Fusion/Fusion_Products/MAST_data/'
 dbfile = 'online_DB.db'
+
+def create_db(dbfile, force_creation = False):
+    # create DB is it has not already been created
+    db_path = cdc.db.DATA_BASE_DIR + dbfile
+    db_exists = os.path.exists(db_path)
+    if db_exists and force_creation:
+        print(f're-create: {db_path}, was forced to do this ')
+    elif db_exists:
+        print(f'{db_path} exists already use set force_creation=True to force overwrite')
+    else:
+        cdc.db.create(db_path)
+
 
 
 #%% add shot to online data base

@@ -24,9 +24,18 @@ from analysis_modules import online_analysis as OA
 today = DT.datetime.today().strftime('%b-%d-%Y')
 
 
+#%%
 
 
-#%% add a new shot
+OA.cdc.db.DATA_BASE_DIR = './'
+
+OA.dbfile = 'new_online_dbfile.db'
+
+#%% create database if not existing already
+
+OA.create_db(OA.dbfile, force_creation=True)
+
+#%% add a new shot to have something in the new DB
 OA.add_shot(OA.dbfile, 
             30114 , 
             'DAQ_090913-131415.hws', 
