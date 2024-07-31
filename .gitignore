@@ -3,6 +3,8 @@
 *.npz
 *.pkl
 *.pyf
+*.pyc
+*.d
 *.so
 *.o
 *.mod

@@ -238,14 +238,14 @@ class sog_fit:
 
 
 #%% make data array for deconvolution based on histogram h and its fit
-def get_psf(h, fit, fwhm):
+def get_psf(bin_width, fit, fwhm):
     sig = fwhm
     #
-    nb = 4*round(sig/h.bin_width)
+    nb = 4*round(sig/bin_width)
     #
-    xmin = -nb*h.bin_width 
+    xmin = -nb*bin_width 
     #
-    xsf = xmin + np.arange(2*nb + 2)*h.bin_width
+    xsf = xmin + np.arange(2*nb + 2)*bin_width
     # make normalized point spread function
     fit.set_peakpos(0.)
     psf  = fit(xsf)
@@ -254,46 +254,141 @@ def get_psf(h, fit, fwhm):
     return psf
 
 
+#%% make a class for the the psf
 
-#%% devoncolution procedure
+class PSF:
+    
+    def __init__(self, psf):
+        self.psf = psf
+        self.n_psf = psf.shape[0]      # length of psf
+        self.loc_max = np.argmax(psf)  # location of maximum os psf
 
-#find indices for an asymmetric
-
-def get_indices_asy(i_v, psf, i_s):
-    # i_v idex of current value
-    # psf point spread function (response function)
-    # get data window
-    n_psf = psf.shape[0]    
-    i_max = np.argmax(psf)
-    # check upper half
-    n_up = n_psf-i_max
-    n_low = i_max
-    # relative position of i_v in i_s array
-    i_diff = i_s - i_v
-    # select data for upper half
-    i_w_up = np.where(get_window((0, n_up - 1),i_diff))[0]
-    i_w_low = np.where(get_window((-n_low, -1),i_diff))[0] 
-    i_window = np.append(i_w_low, i_w_up)
-    i_psf_range = i_window - i_v + i_max
-    return i_window, i_psf_range
-
-
-def get_next_iteration(u, psf):
-    # loop over all data
-    un = np.zeros_like(u)
-    i_s = np.arange(u.shape[0])
-    for j in i_s:
-        i_w, i_pr = get_indices_asy(j, psf, i_s)
-        ci = []
-        for k in i_w:
-            i_w_c, i_pr_c = get_indices_asy(k, psf, i_s)
-            c_i = np.sum(u[i_w_c]*psf[i_pr_c])
-            ci.append(c_i)
-        ci = np.array(ci)
-        u_n = u[j]*np.sum(hc[i_w]*psf[i_pr]/ci)
-        un[j] = u_n
-    return un
+    def __call__(self,i,j):
+        # check for scalar values
+        i_is_scal = np.isscalar(i)
+        j_is_scal = np.isscalar(j)
+        #
+        all_scal = i_is_scal and j_is_scal
+        i_only = i_is_scal and (not j_is_scal)
+        j_only = j_is_scal and (not i_is_scal)
+        no_scal = (not i_is_scal) and (not j_is_scal)
+        if (all_scal):
+            # return psf value at i if max. is located at j
+            k = (i - j) + self.loc_max
+            self.k = k
+            if k < 0 :
+                return 0.
+            elif k >= self.n_psf:
+                return 0.
+            else:
+                return self.psf[k]
+            
+        elif (i_only or j_only):
+            # return psf value at i if max. is located at j
+            k = (i - j) + self.loc_max 
+            self.k = k
+            sel = (0<= k) & (k < self.n_psf)
+            self.sel = sel
+            psf_v = np.zeros_like(k).astype(float)
+            psf_v[sel] = self.psf[k[sel]]
+            return psf_v
         
+        elif (no_scal):
+            # calculate all possible combinations
+            jj,ii = np.meshgrid(j,i)
+            k = (ii - jj) + self.loc_max
+            self.k = k
+            sel = (0<= k) & (k < self.n_psf)
+            self.sel = sel
+            psf_v = np.zeros_like(k).astype(float)
+            psf_v[sel] = self.psf[k[sel]]
+            return psf_v
+                   
+#%% RL deconvoluton see https://en.wikipedia.org/wiki/Richardson–Lucy_deconvolution
+
+# using psf class to calcultate the pij matrix
+
+# fast algorithm
+
+def get_next_iteration(u, pij, d):
+    """
+    calculate new RL itertion
+
+    Parameters
+    ----------
+    u : float array (size n)
+        current RL esimate.
+    pij : float array (size nxn)
+        PSF matrix.
+    d : float array (sizen)
+        original data.
+
+    Returns
+    -------
+    un : float array  (size n)
+        new estimate of u.
+
+    """
+    # d : array of data
+    # pij: psf matrix corresponding to d
+    # loop over all data
+    ci = pij@u  # estimated contribution to bin i from all the pthers using the current iteration
+    ri = d/ci   # ratio between estimate and current exp. value in bin
+    fj = pij.T@ri  # correction factor for current value
+    un = u*fj      # scaled new itertion value for bin content
+    return un
+                
+
+
+
+#%% RL calculation including derivatives
+
+def get_next_iteration_der(u, du_dk, pij, d):
+    """
+    calculate new itertion of RL
+
+    Parameters
+    ----------
+    u : float array (size n)
+        current RL esimate.
+    du_dk : float_array (size nxn)
+        current estimate of du/ddk derivative arrays.
+    pij : float array (size nxn)
+        PSF matrix.
+    d : float array (sizen)
+        original data.
+
+    Returns
+    -------
+    un : float array  (size n)
+        new estimate of u.
+    du_dkn : float array  (size nxn)
+        new estimate of derivatives du_ddk (used for error estimate).
+
+    """
+    # u 
+    # d : array of data
+    # pij: psf matrix corresponding to d
+    # loop over all data
+    ci = pij@u  # estimated contribution to bin i from all the pthers using the current iteration
+    dci_dk = pij@du_dk
+    ri = d/ci      # ratio between estimate and current exp. value in bin
+    fj = pij.T@ri  # correction factor for current value
+    un = u*fj      # scaled new itertion value for bin content
+    # calc. derivatives
+    s1 = du_dk*fj  # muliplies column vector with the values of fj
+    # calculate second part
+    p_over_c = pij/ci
+    ri_sq = d/ci**2 
+    fj_sq = pij.T@(ri_sq*dci_dk)
+    s2 = u*(p_over_c - fj_sq)
+    du_dkn = s1 + s2
+    return un, du_dkn
+                
+
+
+
+
 
 #%% load histogram to determine PSF from pulser peak
 
@@ -303,8 +398,17 @@ h = B.histo(file = 'ch1_projection.data')
 
 h.clear_window()  # needed for histograms loaded from file, this is a bug that needs to be fixed
 
-hc = h.bin_content
-he = h.bin_error
+# copy of histogram to work with, deepcopy needed since othewist bin_content point to the same location
+h_c = C.deepcopy(h)
+
+#h_c.bin_content[90:] = 1e-3
+#h_c.bin_error[90:] = 1.
+
+
+# clear part of the histogram
+hxb = h_c.bin_center[:]
+hc = h_c.bin_content[:]
+he = h_c.bin_error[:]
 
 
 #%% fit pulser peak to get PSF
@@ -394,33 +498,76 @@ gf.get_peak_pos(lims[0], lims[1])
 psf_fit = gf  # select the fit function
 
 # set the psf from the fit
-psf_loc = get_psf(h, psf_fit, fwhm)
+psf_loc = get_psf(h.bin_width, psf_fit, fwhm)
 
-hs = hc
-n_iter = 200  # number of iterations
+# create PSF object
+P = PSF(psf_loc)
+
+d = hc
+sig_d = he
+
+ia = np.arange(d.shape[0])
+ja = np.arange(d.shape[0])
+
+# crate pij array
+pij = P(ia,ja)
+
+hs = d  # set initial guess to the data
+
+du_dk = np.identity(d.shape[0])
+n_iter = 100  # number of iterations
 
 h_iter = []
-h_iter.append(hs)
+der_iter = []
+h_iter.append(d)
+der_iter.append(du_dk)
 
-# perform iterative calculation and save results
+#%% perform iterative calculation and save results
 for i in np.arange(n_iter):
-    hs = get_next_iteration(hs, psf_loc)
+    if i%10 == 0:
+        print(f'Completing {i} iterations {i/n_iter*100.}%')
+    #hs = get_next_iteration(hs, pij, hc)
+    hs, du_dk = get_next_iteration_der(hs, du_dk, pij, d)
     h_iter.append(hs)
+    der_iter.append(du_dk)
 
 h_iter = np.array(h_iter)
 # make a copy of the initial histogram
 h_corr = C.copy(h)
 
+
 dh_iter = np.diff(h_iter, axis = 0)
 
 #%%  evaluate iteration results
-i_iter = 199
+i_iter = 8
+#plot_error = True
+plot_error = False
+
 h_corr.bin_content = h_iter[i_iter]  # set the corrected bin_content
 h_corr.title = f'Deconvoluted : {i_iter} iterations'
 
 B.pl.figure(figsize = (9,4.5))
 h_corr.plot(filled = False, color = 'r')
 h_corr.plot_exp()
+
+
+B.pl.ylim((-500, 10000))
+
+if plot_error:
+    # estimate and plot error
+    sig_u = np.sqrt((der_iter[i_iter]**2)@(sig_d**2) )
+    B.plot_exp(h_corr.bin_center, h_corr.bin_content, sig_u)
+
+
+#%% calculate the mean error as a function of iteration number
+
+sig_mean = []
+
+for ii in range(n_iter):
+    sig_u = np.sqrt((der_iter[ii]**2)@(sig_d**2) )
+    sig_mean.append(sig_u.mean()/sig_d.mean())
+sig_mean = np.array(sig_mean)
+
 
 #%%  differenc ebetween iterations
 i_iter_l = 0

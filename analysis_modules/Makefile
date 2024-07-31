@@ -17,8 +17,6 @@ F2PY_F2   = -c --fcompiler=gfortran --build-dir ./f2py_make
 
 %.o: %.f90
 	$(F2PY) $(F2PY_F1) $(basename $<) -h sgn_$(basename $<).pyf $<
-	cat sgn_$(basename $<).pyf | sed s/,[:space:]*depend\(.*\)// > xx
-	mv xx sgn_$(basename $<).pyf
 	$(F2PY) $(F2PY_F2) sgn_$(basename $<).pyf $<
 
 #----------------------------------------------------------
@@ -39,6 +37,3 @@ clean:
 	rm -rf *.dSYM ./f2py_make
 
 
-
-# regexp to remove depend statement from pyf files
-# cat sgn_ffind_peaks2.pyf | grep ,[:space:]*depend | sed s/,[:space:]*depend\(.*\)//

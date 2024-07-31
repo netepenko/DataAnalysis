@@ -1,0 +1,160 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Jan 30 12:08:07 2024
+
+@author: boeglinw
+"""
+
+import LT.box as B
+import numpy as np
+import shutil as SU
+from LT.parameterfile import pfile
+
+# parse arguments
+import argparse as AG
+import sys
+
+fig = None
+
+class SawTeeth:
+    def __init__(self, fig, file_obj = None):
+        self.fig = fig
+        self.o = file_obj
+        self.axes = fig.gca()
+        self.ymin, self.ymax = self.axes.get_ylim()
+        self.cid = None
+        self.before = None
+        self.after = None
+        self.button = None
+        self.xdata = None
+        self.ydata = None
+        self.before = True
+        self.points_before = []
+        self.points_after = []
+        self.skip = True
+        self.space_bar = False
+        self.cidkey_press = self.fig.canvas.mpl_connect(
+            'key_press_event', self.on_key_press)
+        self.cidkey_release = self.fig.canvas.mpl_connect(
+            'key_release_event', self.on_key_release)
+
+    def on_key_press(self,event):
+        ok = event.key == ' '
+        if ok :
+            self.space_bar = (not self.space_bar)
+        if self.space_bar:
+            print 'Skip mouse'
+        else:
+            print 'Use mouse'        
+        sys.stdout.flush()
+        
+    def on_key_release(self,event):
+        pass
+                
+    def clear_points_before(self):
+        self.points_before = []
+    
+    def clear_points_after(self):
+        self.points_after = []
+
+    def add_crash_high_edges(self):
+        print "Pick high edges, terminate with right mouse click "
+        if self.cid == None:
+            self.cid = fig.canvas.mpl_connect('button_press_event', self)
+        self.before = True
+        
+    def add_crash_low_edges(self):
+        print "Pick low edges, terminate with right mouse click "
+        if self.cid == None:
+            self.cid = fig.canvas.mpl_connect('button_press_event', self)
+        self.before = False
+
+    def load_ts_file(self, ts_file_name):
+        # read existing time slice file
+        dts = B.get_file(ts_file_name)
+        # get the data
+        tmin = np.array(dts.get_data('t_min'))
+        tmax = np.array(dts.get_data('t_max'))
+        comment = np.array(dts.get_data('comment'))
+        # select the belore and after points
+        sel_before = (comment == 'cb')
+        sel_after = (comment == 'ca')
+        tb = tmax[sel_before]
+        ta = tmin[sel_after]
+        # now add them to the existing arrays
+        for i,tt in enumerate(tb): 
+            self.points_before.append([tb[i], self.ymin])
+            self.points_after.append([ta[i], self.ymin])
+        self.sort_slices()
+        
+    def sort_slices(self):
+        # sort the slices by time
+        p_b = self.points_before
+        p_a = self.points_after
+        tb = np.array(p_b)[:,0]
+        isort = np.argsort(tb)
+        for i, i_s in enumerate(isort):
+            self.points_before[i] = p_b[i_s]
+            self.points_after[i] = p_a[i_s]
+        # all done
+            
+    def show_slices(self):
+        # plot the slices
+        for i, b in enumerate(self.points_before):
+            tb1  = b[0] - d_time
+            tb2 =  b[0]
+            a = self.points_after[i]
+            ta1 = a[0]
+            ta2 = a[0] + d_time
+            B.pl.vlines(tb1, self.ymin, self.ymax, color = 'r')
+            B.pl.vlines(tb2, self.ymin, self.ymax, color = 'r')
+            B.pl.vlines(ta1,  self.ymin, self.ymax, color = 'm')
+            B.pl.vlines(ta2,  self.ymin, self.ymax, color = 'm')
+        
+        
+    def finished(self):
+        if self.cid == None:
+            return
+        else:
+            fig.canvas.mpl_disconnect(self.cid)
+            self.cid = None   
+        
+    def __call__(self, event):
+        # print 'Mouse Event', event
+        if self.space_bar: return
+        if event.inaxes!=self.axes: 
+            print 'outside of plot!'
+            return
+        if event.button > 1:
+            print "finished adding points"
+            self.finished()
+            return
+        if self.before:
+            print 'add before event'
+            self.points_before.append([event.xdata, event.ydata])
+            B.pl.vlines(event.xdata, self.ymin, event.ydata)
+        else:
+            print 'add after event'
+            self.points_after.append([event.xdata, event.ydata])
+            B.pl.vlines(event.xdata, self.ymin, event.ydata)
+        # fig.update()
+        
+    def add_slices(self):
+        # loop over  edges and add /subtrace windows
+        for i, b in enumerate(self.points_before):
+            tb1  = b[0] - d_time
+            tb2 =  b[0]
+            a = self.points_after[i]
+            ta1 = a[0]
+            ta2 = a[0] + d_time
+            print 'adding slice : ', i
+            self.o.write('\n# crash : {}\n'.format(i))
+            self.o.write('{} {} {} {}\n'.format(tb1, tb2, 'cb', 1.) )
+            self.o.write('{} {} {} {}\n'.format(ta1, ta2, 'ca', 1.) )
+
+    def finish_all(self):
+        self.o.close()
+    
+def save_all():
+    SU.copy('ts_file.data', ts_file)

@@ -43,7 +43,7 @@ subroutine find_peaks(N, Np, delta, val, n_min, min_pos, n_max, max_pos)
   
   integer, intent(in):: N, Np
   real(kind = 8), intent(in):: delta
-  real(kind = 8), dimension(:), intent(in) ::val
+  real(kind = 8), dimension(N), intent(in) ::val
   ! integer, dimension(2), intent(out):: results
   integer, intent(out) :: n_max, n_min
   integer, dimension(Np), intent(out):: min_pos

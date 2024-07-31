@@ -358,9 +358,10 @@ class raw_fitting:
         self.fg_shift_n_peaks = self.fg_shift[:,1] - self.fg_shift[:,0]
         
     def find_fitgroup(self,t):
-        i_t = round(t/self.dt)
-        # find the intervalue in the fg_limits
-        return np.where((self.fg_limits[:,0] < i_t) & (i_t <= self.fg_limits[:,1]))[0][0]
+        # find the interval for t in the fg_limits
+        t_ll = self.td[self.fg_limits[:,0]]  # lower limit times for the fit groups
+        t_ul = self.td[self.fg_limits[:,1]]  # upper limit times for the fit groups
+        return np.where((t_ll < t) & (t <= t_ul))[0][0]
         
 
     def init_fitting(self):
