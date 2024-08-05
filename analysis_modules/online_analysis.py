@@ -63,9 +63,9 @@ def add_shot(dbfile, shot, filename, rp_pos = 2., rp_setpoint = 0, t_offset = 0.
      cdc.db.copyrow(dbfile, 'Shot_list', 'Shot = 99999', new_par)
      # add  corresponding entires to
      for i in channels:         
-         cdc.db.copyrow(dbfile, 'Peak_Sampling', f'Shot = 99999 AND Channel = {i}', f'Shot = {shot}' )
-         cdc.db.copyrow(dbfile, 'Rate_Analysis', f'Shot = 99999 AND Channel = {i}', f'Shot = {shot}' )
-         cdc.db.copyrow(dbfile, 'Raw_Fitting', f'Shot = 99999 AND Channel = {i}', f'Shot = {shot}' )
+         cdc.db.copyrow(dbfile, 'Peak_Sampling', 'Shot = 99999 AND Channel = 0', f'Shot = {shot}, Channel = {i}' )
+         cdc.db.copyrow(dbfile, 'Rate_Analysis', 'Shot = 99999 AND Channel = 0', f'Shot = {shot}, Channel = {i}' )
+         cdc.db.copyrow(dbfile, 'Raw_Fitting', 'Shot = 99999 AND Channel = 0', f'Shot = {shot}, Channel = {i}' )
      return
 
 

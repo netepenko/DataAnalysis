@@ -17,6 +17,7 @@ from . import ffind_peaks2 as FP
 from . import lfitm1 as LF 
 from . import utilities as UT
 from . import database_operations as db
+import matplotlib.pyplot as plt
 
 #conversion to microseconds constant
 us=1.e6
@@ -224,7 +225,7 @@ class raw_fitting:
         psize = self.channel_data.psize
         
         N = len(self.V)
-        Np = int(len(self.V)/psize)
+        Np = int(len(self.V)/psize)  # rough estimate of the possible max. number of peaks
         n_min, pmin, n_max, pmax = FP.find_peaks(N, Np, Vstep, self.V)
     
         # number of maxima
@@ -244,7 +245,7 @@ class raw_fitting:
         #choose minimums close to previous maximum (to filter out electrical switching noise peaks)
         close_time = np.where((self.td[imin][ipeak_tr]-self.td[imax][ipeak_tr])<min_delta_t)[0] 
         self.close_time = close_time
-        # check if next minimum is not too negative (removing switching noize)        
+        # check if next minimum is not too negative (removing switching noise)        
         neg_V_min = np.where(self.V[imin][ipeak_tr][close_time]<max_neg_V)[0] 
         
         self.neg_V_min = neg_V_min
@@ -358,10 +359,9 @@ class raw_fitting:
         self.fg_shift_n_peaks = self.fg_shift[:,1] - self.fg_shift[:,0]
         
     def find_fitgroup(self,t):
-        # find the interval for t in the fg_limits
-        t_ll = self.td[self.fg_limits[:,0]]  # lower limit times for the fit groups
-        t_ul = self.td[self.fg_limits[:,1]]  # upper limit times for the fit groups
-        return np.where((t_ll < t) & (t <= t_ul))[0][0]
+        
+        # find the intervalue in the fg_limits
+        return np.where((self.td[self.fg_limits[:,0]] < t) & (t <= self.td[self.fg_limits[:,1]]))[0][0]
         
 
     def init_fitting(self):
@@ -524,8 +524,10 @@ class raw_fitting:
             LF.lfitm1.free_all()
             if (plot_fit and (len(tt)!= 0) ):
                 B.pl.figure()
-                B.pl.plot(tt+tpk, Vt, '.', color = 'b' )
+                #B.pl.plot(tt+tpk, Vt, '.', color = 'b' )
+                B.pl.plot(tt+tpk, Vt, '.', color = 'y' )
                 B.pl.plot(tp_fit, Vp_fit, 'o', color = 'r')
+              
                 B.pl.xlabel('t(us)')
                 B.pl.ylabel('V')
                 if shifted:
@@ -536,17 +538,20 @@ class raw_fitting:
         if (plot_fit and (len(tt)!= 0) ):
             B.pl.figure()
             p = np.polynomial.Polynomial(bkg) # background
-            B.pl.plot(tt+tpk, Vt, '.', color = 'b' ) 
+            #B.pl.plot(tt+tpk, Vt, '.', color = 'b' ) 
+            B.pl.plot(tt+tpk, Vt, '.', color = 'y' )
             B.pl.plot(tp_fit, Vp_fit, 'o', color = 'r')
-            B.pl.plot(tt+tpk, line_shape(tt), color = 'm' )
+            B.pl.plot(tt+tpk, line_shape(tt), color = 'blueviolet' )
             B.pl.plot(tt+tpk, p(tt), color = 'g' )
             vy0,vy1 = B.pl.ylim()
             vx0 = self.td[lims[0]]
             vx1 = self.td[lims[1]]
-            B.pl.vlines([vx0, vx1], vy0, vy1, color = 'r')
-            B.pl.vlines([bdry_start, bdry_end], vy0, vy1, color = 'm')
-            B.pl.xlabel('t(us)')
-            B.pl.ylabel('V')
+            #B.pl.vlines([vx0, vx1], vy0, vy1, color = 'r')
+            #B.pl.vlines([bdry_start, bdry_end], vy0, vy1, color = 'm')
+            B.pl.xlabel('Time(us)',  size=16, weight='bold' )
+            B.pl.ylabel('V',  size=16, weight='bold' )
+            plt.yticks(fontsize=14,weight = 'bold' )
+            plt.xticks(fontsize=14,weight ='bold')
             if shifted:
                 B.pl.title('Shifted fit groups')
             else:

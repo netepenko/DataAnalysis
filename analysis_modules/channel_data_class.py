@@ -31,7 +31,7 @@ from . import data_plotting
 
 # convert needs to be set true only for data wich was written in int16 format
 # while declared as float (mistake in LabView acquisition code lead to this confusion)
-convert = True
+convert = False
 # --------------------------------
 """
 Main class to load data. If a version number is not given the latest version of parameters from 
@@ -44,7 +44,9 @@ no parameters are loaded from the other database tables
 # conversion to microseconds constant
 us = 1.e6
 
-to_bool = {'True':True, 'False':False}
+to_bool = {'True':True, 'False':False, '1':True, '0':False}
+
+digitizer_types = ['NI', 'Gage']
 
 # sllowable file types
 
@@ -59,7 +61,9 @@ class channel_data():
                  result_root = None, 
                  scan_only = False, 
                  Vscan_s = 0.1, 
-                 Vscan_th = 0.15):
+                 Vscan_th = 0.15,
+                 bkg_channel = 4,
+                 digitizer = 'Gage'):
         """
         load data for a digitizer channel and setup the necessary parameters for further analysis
 
@@ -87,12 +91,22 @@ class channel_data():
             V_step for scanning peak finding. The default is 0.1.
         Vscan_th : TYPE, optional
             V thershold for scanning peak finding. The default is 0.15.
+        bkg_channel: Int, optional
+            Channel number conatining background noise data, needed for correction
 
         Returns
         -------
         Object
 
         """
+        self.Vps = None
+        self.Vps_bkg = None
+        # check for a valid digitizer
+        if digitizer in digitizer_types:
+            self.digitizer = digitizer
+        else:
+            print(f'Unknwn digitzer : {digitizer}, valid types are: {digitizer_types}')
+            return
         # dictionary of load data functions
         self.load_data_dict = {'raw':self.load_raw_data,
                           'corrected':self.load_hdf_data,
@@ -137,6 +151,7 @@ class channel_data():
         self.par['shot'] = shot
         self.par['channel'] = channel
         self.par['version'] = version
+        self.par['bkg_channel'] = bkg_channel
         self.psize = 5
         self.N_pulser_events = 0
         if result_root is None:
@@ -237,7 +252,7 @@ class channel_data():
         print('Analysis results will be placed in: ', self.var['res_dir'])
         return 0
 
-    
+   
     def load_raw_data(self, **kwargs):
         # --------------------------------
         # ######## Load raw data #########
@@ -264,13 +279,17 @@ class channel_data():
         #tds = fu.get_window_slice(self.par['dtmin'], tall, self.par['dtmax'])
 
         # get the y dataset (measured data)
-        if convert:
+        if convert and (self.digitzer == 'NI'):
             ydata = f[data_root + 'y-axis/data_vector/data'][()].astype('int16')
         else:
             ydata = f[data_root + 'y-axis/data_vector/data'][()]
 
-        # calculate voltage for dataset
-        V = scale[0] + scale[1]*ydata
+        # calculate voltage for dataset ## added 7/27/23 for NI data
+        if self.digitizer == 'NI':
+            V = scale[0] + scale[1]*ydata
+        else:
+            # calculate voltage for dataset  ## added 7/27/23 for GaGe data
+            V = ydata  
         print("-----------------------Data loaded-------------------------")
 
         # save data for future use
@@ -289,6 +308,58 @@ class channel_data():
         if self.par['add_pulser']:
             self.add_pulser()
 
+    def load_raw_bkg_data(self, **kwargs):
+        # --------------------------------
+        # ######## Load raw data #########
+        self.data_filename =  self.par['root_dir'] + self.par['exp_dir'] + self.par['exp_file']
+        f = h5py.File(self.data_filename, 'r')
+        # setup reading the data
+        data_root = 'wfm_group0/traces/trace' + str(self.par['bkg_channel']) + '/'
+
+        print("-----------------------Getting data------------------------")
+
+        # load time information
+        t0 = f[data_root + 'x-axis'].attrs['start']*us + self.par['t_offset']
+        dt = f[data_root + 'x-axis'].attrs['increment']*us
+        # load scale coeeff and scale dataset
+        scale = f[data_root + 'y-axis/scale_coef'][()]
+
+        # get the y dataset length
+        nall = f[data_root + 'y-axis/data_vector/data'].shape[0]
+
+        # make time array based on number of points in y data
+        tall = t0 + dt*np.arange(nall, dtype=float)
+
+        # data window for analysis (indices in all data array)
+        #tds = fu.get_window_slice(self.par['dtmin'], tall, self.par['dtmax'])
+
+        # get the y dataset (measured data)
+        if convert and (self.digitzer == 'NI'):
+            ydata = f[data_root + 'y-axis/data_vector/data'][()].astype('int16')
+        else:
+            ydata = f[data_root + 'y-axis/data_vector/data'][()]
+
+        # calculate voltage for dataset ## added 7/27/23 for NI data
+        if self.digitizer == 'NI':
+            V = scale[0] + scale[1]*ydata
+        else:
+            # calculate voltage for dataset  ## added 7/27/23 for GaGe data
+            V = ydata  
+        print("-----------------------Data loaded-------------------------")
+
+        # save data for future use
+        self.td_bkg = tall  # time data (microseconds) in analysis interval
+        self.Vps_bkg = V  # voltage data
+        self.dt_bkg = dt  # time step (microseconds)
+
+        # testing of fitting pulser
+#        self.td = self.td[0:1000000]
+#        self.Vps = np.zeros_like(self.td)
+        if self.scan_only:
+            self.par['dtmin'] = self.td.min()
+            self.par['dtmax'] = self.td.max()
+            return
+
 #   plotting of raw data without overloading the figure
 # (skipping some data points according to maximum allowed points on plot)
 
@@ -302,9 +373,15 @@ class channel_data():
         self.f = np.load(self.data_filename)
         d = self.f
         print("--------------------- Get npz data ------------------------")
+        ##added 1/17/2024
+        self.td = d['t']*us
+        self.Vps = d['V']
+        self.dt = d['t'][1] - d['t'][0]
+        """
         self.td = d['time']*us
         self.Vps = d['signal']
         self.dt = d['time'][1] - d['time'][0]
+        """
         print("-----------------------Data loaded-------------------------")
         # add pulser to data if add_pulser parameter set to True
         if self.par['add_pulser']:
@@ -349,7 +426,7 @@ class channel_data():
             interval = np.where((self.par['dtmin'] < t) & (t < self.par['dtmax']))
             t = t[interval]
             V = V[interval]            
-        data_plotting.plot_data(t, V, **kwargs)
+        data_plotting.plot_data(t/us, V, **kwargs)
 
 # add pulser signals to check fit performance
     def add_pulser(self):

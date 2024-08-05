@@ -73,11 +73,13 @@ class analysis_data:
         Vpr = d['V']      # raw PH
         Ar = d['A']       # fitted PH
         dAr = d['sig_A']  # uncertainty in fit
+        bkg_val = d['bkg_val'] # fitted bkg value at peak location
         
         self.tr = tr
         self.Vpr = Vpr
         self.Ar = Ar
         self.dAr = dAr
+        self.bkg_val = bkg_val  
 
         self.select_signals()
 
@@ -86,6 +88,8 @@ class analysis_data:
         Ar = self.Ar
         dAr  = self.dAr
         Vpr = self.Vpr
+        bkg_val = self.bkg_val
+        
         # positive signals
         pa = Ar>0.
         self.pa = pa
@@ -106,6 +110,7 @@ class analysis_data:
         # simple pulse heights for testing
         self.tp = tr[pa]
         self.Ap = Vpr[pa]   # raw data
+        self.Ap_corr = Vpr[pa] - bkg_val[pa]  # pulse height corrected for fitted bkg
 
         
 class rate_analysis:
@@ -218,22 +223,27 @@ class rate_analysis:
         draw_pulser=self.par['draw_pul']
         
         dt = self.par['time_slice_width']*us
-
+        
+        
         # proton sum signal
         if draw_p :
+            #B.pl.figure()
             B.plot_exp(self.slice_t/us, self.A_sp/dt*us, self.dA_sp/dt*us, linestyle = '-', marker = 'o', color = 'b', ecolor='grey', capsize = 0.) #,markeredgecolor='g',
 
         # triton sum signal
         if draw_t:
+            #B.pl.figure()
             B.plot_exp(self.slice_t/us, self.A_st/dt*us, self.dA_st/dt*us, color = 'g', ecolor='grey', capsize = 0.)
 
         # pulser sum signal
         if draw_pulser:
+            #B.pl.figure()
             B.plot_exp(self.slice_t/us, self.A_pul/dt*us, self.dA_pul/dt*us, color = 'm', ecolor='grey', capsize = 0.)
-
+                  
         # Total signal
         if draw_sum :
-            B.plot_exp(self.slice_t/us, self.A_t/dt*us, self.dA_t/dt*us, linestyle = '-',ecolor='grey', marker = '.',   capsize = 0., label='Ch %d'%self.par['channel'])
+            #B.pl.figure()
+            B.plot_exp(self.slice_t/us, self.A_t/dt*us, self.dA_t/dt*us, linestyle = '-',ecolor='my_cmap', marker = '.',   capsize = 0., label='Ch %d'%self.par['channel'])
         o_file = self.var['of_name']
 
         if  not os.path.exists(os.path.dirname(o_file)):
@@ -261,6 +271,7 @@ class rate_analysis:
         # all pos. data
         tp = a_data.tp
         Ap = a_data.Ap
+        Ap_corr = a_data.Ap_corr
 
         # 2d histogram setup
         # y - aaxis
@@ -278,18 +289,44 @@ class rate_analysis:
         
         self.h2 = B.histo2d(tg, Ag, range = [[tmin,tmax],[hy_min,hy_max]], bins = [hx_bins, hy_bins],
                             title = h_title, xlabel = r't[$\mu$ s]', ylabel = 'fitted PH [V]')
+        
         self.h2p = B.histo2d(tp, Ap, range = [[tmin,tmax],[hy_min,hy_max]], bins = [hx_bins, hy_bins],
                              title = h_title, xlabel = r't[$\mu$ s]', ylabel = 'raw PH [V]')
 
-    def plot_2d(self, raw = False, **kwargs):
+        self.h2p_corr = B.histo2d(tp, Ap_corr, range = [[tmin,tmax],[hy_min,hy_max]], bins = [hx_bins, hy_bins],
+                             title = h_title, xlabel = r't[$\mu$ s]', ylabel = 'corrected raw PH [V]')
+
+        
+        #from matplotlib import pyplot as plt, colors
+        
+        #self.h2 = B.histo2d(tg, Ag, range = [[tmin,tmax],[hy_min,hy_max]], bins = [hx_bins, hy_bins],
+         #                     ylabel = 'fitted PH [V]')
+        #self.h2p = B.histo2d(tp, Ap, range = [[tmin,tmax],[hy_min,hy_max]], bins = [hx_bins, hy_bins],
+         #                      ylabel = 'raw PH [V]')
+        """
+        #Add Save histos for raw and fit Peak Height (PH):
+        filename_raw = str(self.par['shot']) + '_' + str(self.par['channel']) +'_rawPH_histo' + '.data'  
+        self.h2p.save(filename_raw)    
+          
+        filename_fit = str(self.par['shot']) + '_' + str(self.par['channel']) +'fitPH_histo' + '.data'  
+        self.h2p.save(filename_fit)
+        """
+
+    def plot_2d(self, raw = False, corrected = False, **kwargs):
+        
+        filename_raw = str(self.par['shot']) + '_' + str(self.par['channel']) +'_rawPH_histo' + '.data'
+        filename_fit = str(self.par['shot']) + '_' + str(self.par['channel']) +'_fitPH_histo' + '.data'
+        
         if  self.h2 is None:
             print('No 2d histogram created !')
             return
         
         if raw:
             self.h2p.plot(**kwargs)
+            #self.h2p.save(filename_raw)
         else:
             self.h2.plot(**kwargs)
+            #self.h2.save(filename_fit)
             
     
     def delete_2d_histo(self):
@@ -465,10 +502,20 @@ class rate_analysis:
             fn = os.path.splitext(o_file)
             o_file= fn[0] + '_' + time.strftime('%d_%m_%Y_%H_%M_%S') + fn[1]         
         n_lines = self.slice_t.shape[0]
+        
         np.savez_compressed(o_file, t=self.slice_t/us, 
                             Ap=self.A_sp/dt, dAp=self.dA_sp/dt, 
                             At=self.A_st/dt, dAt=self.dA_st/dt, 
                             A=self.A_t/dt, dA=self.dA_t/dt)
+        """
+        np.savez_compressed(o_file, t=self.slice_t/us, 
+                            Ap=self.A_sp/dt, dAp=self.dA_sp/dt, 
+                            At=self.A_st/dt, dAt=self.dA_st/dt, 
+                            A=self.A_t/dt, dA=self.dA_t/dt,
+                            Asp=self.A_sp, dAsp =self.dA_sp,
+                            Ast=self.A_st, dAst=self.dA_st, 
+                            At=self.A_t, dAt=self.dA_t)
+        """
         print("Wrote : ", n_lines, " lines to the output file: ", o_file)
         self.last_saved_in = o_file
         # store the file name in the database

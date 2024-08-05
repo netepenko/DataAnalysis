@@ -25,7 +25,7 @@ Created on Wed Oct 12 21:49:02 2016
     
     ps.save_parameters('MyDbfile')
     
-
+from analysis_modules import utilities as UT
 """
 import numpy as np
 import LT.box as B
@@ -111,7 +111,7 @@ class peak_sampling:
         """
         
         q_from  = 'Peak_Sampling'
-        q_where = f'Shot = {self.shot} AND Channel = {self.channel} AND Version = {self.channel_data.version}'
+        q_where = f'Shot = {self.channel_data.shot} AND Channel = {self.channel_data.channel} AND Version = {self.channel_data.version}'
         
         q_what = 'b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12' 
         
@@ -123,6 +123,40 @@ class peak_sampling:
         
         self.good_peak_times = np.array([tsmin, tsmax]).T
 
+    def load_parameters(self, dbfile):
+        """
+        peak shape and peak find parameters
+
+        Parameters
+        ----------
+        dbfile : str
+            databas file name.
+
+        Returns
+        -------
+        None.
+
+        """
+        
+        q_from  = 'Peak_Sampling'
+        q_where = f'Shot = {self.channel_data.shot} AND Channel = {self.channel_data.channel} AND Version = {self.channel_data.version}'
+        
+        q_what = 'Vstep, Vth, Chi2, tmin, tmax, decay_time, rise_time, position' 
+        
+        db.check_data(dbfile, q_from, q_where)
+        # make a dictionary from the db return values
+        db_val = np.asarray(db.retrieve(dbfile, q_what, q_from, q_where) )[0,:] 
+        db_keys = [kk.strip() for kk in q_what.split(',')]
+        self.db_par = dict(zip(db_keys, db_val))
+        # set new parameter values
+        self.decay_time = self.db_par['decay_time']*us
+        self.rise_time = self.db_par['rise_time']*us
+        self.position = self.db_par['position']*us
+        
+        self.channel_data.par['ps_tmin'] = self.db_par['tmin']*us
+        self.channel_data.par['ps_tmax'] = self.db_par['tmax']*us
+        self.channel_data.par['ps_Vstep'] = self.db_par['Vstep']
+        self.channel_data.par['ps_Vth'] = self.db_par['Vth']
             
     def fit_shape(self, ts, Vt):
         """
@@ -154,7 +188,7 @@ class peak_sampling:
         alpha = B.Parameter(1./self.decay_time, 'alpha')
         beta = B.Parameter(1./self.rise_time, 'beta')
         x0 = B.Parameter(ts[np.argmax(Vt)], 'x0') 
-        H = B.Parameter(1.,'H')
+        H = B.Parameter(1.,'H') #max(Vt)  
         offset = B.Parameter(0., 'offset')         
         
         # shift peak shape 
@@ -162,8 +196,11 @@ class peak_sampling:
             sig, y = UT.peak(x-x0(), alpha(), beta() )
             return y*H() + offset()
         
-        F=B.genfit(signal, [alpha, beta, x0, H, offset], x = ts, y = Vt, plot_fit = False)
-               
+        try:
+            F=B.genfit(signal, [alpha, beta, x0, H, offset], x = ts, y = Vt, plot_fit = False)
+        except Exception as e:
+            print(f'fit_shape cannot fit : {e}')
+            return None, alpha(), beta(), H(), offset(), x0()               
         return F, alpha(), beta(), H(), offset(), x0()
         
     def fit_peaks(self, t_slices = None, save_fit = True, save_slices = True):
@@ -206,16 +243,21 @@ class peak_sampling:
             t_slices = self.good_peak_times
         
         # create common array for peak data
-        Vtotal=np.zeros(int(self.psize*(self.rise_time + self.decay_time)/self.channel_data.dt) )
-        counters = np.zeros(int(self.psize*(self.rise_time + self.decay_time)/self.channel_data.dt) )
+        dt = self.channel_data.td[1] - self.channel_data.td[0]
+        Vtotal=np.zeros(int(self.psize*(self.rise_time + self.decay_time)/dt) )
+        counters = np.zeros(int(self.psize*(self.rise_time + self.decay_time)/dt) )
         # local names
         Vps=self.channel_data.Vps  # digitizer data
         td=self.channel_data.td
+                            
         # save time in class if selected
         if save_slices:
             self.good_peaks = t_slices
         # psize * rise time im indices
-        i_shift = int(self.psize*(self.rise_time/self.channel_data.dt) )
+        i_shift = int(self.psize*(self.rise_time/self.channel_data.dt) )      
+        print( 'i_shift', i_shift)
+        if self.plot_single_peaks:
+           B.pl.figure() 
         # loop over time slices for model peaks
         for i, ts in enumerate(t_slices):
             tmin = ts[0]
@@ -227,29 +269,45 @@ class peak_sampling:
             Vt = Vps[sl]/Vmax
             ts = td[0:Vt.shape[0]]-td[0]
             F, alpha, beta, H, offset, x_0 = self.fit_shape(ts,Vt)
+            if F is None:
+                print(f'Fit peaks : bad fit for slice {i}, ignored')
+                continue
+            # re-normalize peak height to 1
+            Vt = (Vt-offset)/H
             if self.plot_single_peaks: #plot_peak_samples:
-                    B.pl.figure()
-                    B.pl.plot(ts, Vps[sl], '*', label=f'original peak {i}')
                     B.pl.plot(ts, Vt, '.', label=f'normalized peak {i}')
-                    B.pl.plot(ts,F.func(ts), color='b')
                     B.pl.legend()
                     B.pl.xlabel('t(us)')
                     B.pl.ylabel('V')
-                    B.pl.axis('tight')
-            # normalize peak height to 1
-            Vt = (Vt-offset)/H
-            # shift the peaks to make sure that the maximum is at the same position
+                    B.pl.axis('tight')            # shift the peaks to make sure that the maximum is at the same position
+            
             for i, V in enumerate(Vtotal):
                 try:
                     Vtotal[i] = Vtotal[i] + Vt[i + imax -  i_shift]  # start all 
+                    print(i, Vtotal[i])
                     counters[i] += 1
                 except:
                     pass
+            """  
+            for i, V in enumerate(Vtotal):
+      
+                    Vtotal[i] = Vtotal[i] + Vt[i + imax -  i_shift]  # start all 
+                    
+                    counters[i] += 1
+            """   
         ttotal = td[0:Vtotal.shape[0]]-td[0]
-        # calculate overage values 
+        
+        if ttotal.shape[0] != Vtotal.shape[0]:
+            print(f'Shape problem : ttotal ({ttotal.shape[0]}), Vtotal({Vtotal.shape[0]})')
+        
+        # calculate average values 
         sel = counters > 0.
         Vtotal[sel] =  Vtotal[sel] / counters[sel]
-        F, alpha, beta, H, offset, x0 = self.fit_shape(ttotal[sel],Vtotal[sel])   
+        #print('Vtotal', Vtotal, 'ttotal', ttotal)
+        F, alpha, beta, H, offset, x0 = self.fit_shape(ttotal[sel],Vtotal[sel])  
+        if F is None:
+            print(f'Fit peaks : bad fit for common peak')
+            return None, alpha, beta, H, offset, x0
         if self.plot_common_peak: #plot average peak shape and fit
                 B.pl.figure()
                 tts = ttotal[sel]
@@ -272,7 +330,7 @@ class peak_sampling:
         # all done               
     
     
-    def find_good_peaks(self, tmin = None, tmax = None, Vstep = None, Vthres = None):
+    def find_good_peaks(self, tmin = None, tmax = None, Vstep = None, Vthres = None, min_delta_t = 0.):
         """
          search for good model peaks between tmin and tmax.
          
@@ -291,7 +349,8 @@ class peak_sampling:
             Voltage step for peak finding algorithm.
         Vthres : float, optional
             Threshold value for peak height.
-
+        min_delta_t : float, optional
+            minimum distance between peaks.
         Returns
         -------
         None.
@@ -327,18 +386,34 @@ class peak_sampling:
         
         N_dat = len(Vps)
         N_p = int(N_dat/psize)
+        
         nmin, pmin, nmax, pmax = FP.find_peaks(N_dat, N_p, Vstep, Vps)
         
         # number of maxima
         print(" found : ", nmax, " maxima")
         # store locations of peaks
         imax = pmax[:nmax]
+        print('imax', imax, 'n_peaks', imax.shape[0])
         # get the indices of peaks higher then threshold, last peak removed
         ipeak_tr = imax[Vps[imax] > Vthres]
-        ngood_peaks = ipeak_tr.shape[0]
-        # times and posistions for potentially good peaks
-        tp = td[ipeak_tr]
-        Vp = Vps[ipeak_tr]
+        # WB new   time for the selected peaks      
+        td_max = td[ipeak_tr]
+        # calculate time differences
+        delta_td_max = np.diff(td_max)
+        
+        # find peaks that are well separated from their nearest neighbors in time
+        sel = (min_delta_t < delta_td_max) & (min_delta_t < np.roll(delta_td_max, 1))
+        i_sel = np.where(sel)[0] # index into td_max for well isolated peaks
+        
+        ipeak_ok = ipeak_tr[i_sel]         
+        # WB new ends here
+        # ngood_peaks = ipeak_tr.shape[0]
+        ngood_peaks = ipeak_ok.shape[0]
+        self.ngood_peaks = ngood_peaks
+        print(f'Analyzing {ngood_peaks} potentially good peaks')
+        # times and posistions for potentially good peaks with good separation
+        tp = td[ipeak_ok]
+        Vp = Vps[ipeak_ok]
         #go through found peaks and determine the shape of peak
         #by requiring chi square to be less than some value set in GUI
         # initialize counters
@@ -352,14 +427,23 @@ class peak_sampling:
             sl=UT.get_window_slice(t_start, td, t_stop )
             # normalize peak shape, Vp[i] is maximum value
             Vt = Vps[sl]/(Vp[i])
+            print('--------',np.argmax(Vt))
             # create common tinae array starting at 0
             ts = td[0:Vt.shape[0]]-td[0]
             # fit this peak
-            F, alpha, beta, H, offset, x0 = self.fit_shape(ts,Vt)
+            try:
+                F, alpha, beta, H, offset, x0 = self.fit_shape(ts,Vt)
+            except Exception as e:
+                print(f'problem with peak fit : {e}')
             # increment current peak index
-            if F.chi2 > self.chi2: 
-                print("--------------->bad peak, ignore <-----------------")
-                if (i >= ngood_peaks):
+            if F is None:
+                print("--------------->bad peak, fit failed, ignore <-----------------")
+                if (i == ngood_peaks-1):
+                    print("Finding good peaks failed after %d attempts." %i)
+                    return                
+            elif (F.chi2 > self.chi2): 
+                print(f"--------------->bad peak ({F.chi2}), ignore <-----------------")
+                if (i == ngood_peaks-1):
                     print("Finding good peaks failed after %d attempts." %i)
                     return
             else:
@@ -378,7 +462,7 @@ class peak_sampling:
                         # B.pl.savefig("../Analysis_Results/%d/Good_peaks/Peak_%d.png" %(self.par['shot'], j))
                 j+=1
             i+=1 # increment current peak counters
-            # print(i, j)
+            print(f'Analyze peak {i} out of {ngood_peaks} accepted {j} peaks (max {Np})')
         # calculate the average of all renormalized peaks
         # now calculate average signal
         #self.fit_peaks(self.good_peak_times, save_fit = True)          

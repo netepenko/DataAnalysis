@@ -52,7 +52,8 @@ def thinning(self):
     Vcut=Vo[::n]
 
     ax.set_prop_cycle(None)
-    ax.lines.remove(self.axes.lines[0])
+    #ax.lines.remove(self.axes.lines[0])
+    self.axes.lines[0].remove()
     #ax.set_autoscaley_on(True)
     ax.autoscale(enable=False, axis='x', tight=True)
     #ax.autoscale(enable=True, axis='y', tight=True)
