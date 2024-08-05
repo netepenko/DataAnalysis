@@ -291,7 +291,7 @@ class MainWindow(qtw.QMainWindow, Ui_MainWindow):
             return
         
     def update_scv(self):
-        print('===> db table trigger, update all')
+        print(f'===> db table trigger, update all, shot = {self.current_shot}')
         print('setup shot combo')
         self.setup_shot_list()
         print('setup channel combo')
@@ -333,33 +333,39 @@ class MainWindow(qtw.QMainWindow, Ui_MainWindow):
     def set_combo_selections(self, table, shot, channel, version): 
         # set the current selections
         print(f'Set CB texts: {table} {shot} {channel} {version}')
-        SetComboText(self.comboBoxTable, table)
-        SetComboText(self.comboBoxShot, shot)
-        SetComboText(self.comboBoxChannel, channel)
-        SetComboText(self.comboBoxVersion, version)
+        if table is not None:
+            SetComboText(self.comboBoxTable, table)
+        if shot is not None:
+            SetComboText(self.comboBoxShot, shot)
+        if channel is not None:
+            SetComboText(self.comboBoxChannel, channel)
+        if version is not None:
+            SetComboText(self.comboBoxVersion, version)
         
         
     def setup_shot_list(self):
         # get selected table
         current_table = self.comboBoxTable.currentText()
-        # clear the content
+        # clear the shitlist content
         self.comboBoxShot.clear()
-        print(f'current_table = {current_table}')
+        print(f'====> setup_shot_list : current_table = {current_table}')
         try:
             shots = [r[0] for r in db.retrieve(self.db_file, 'Shot', current_table, distinct = True)]
         except Exception as e:
-            print(f'cannot get shots list {e}')
+            print(f'cannot get shot list {e}')
             return
-        for i, s_name in enumerate(shots):
+        if shots == []:
+            # nothing returned, nothing to do
+            return
+        for i, s_name in enumerate(sorted(shots)):
             self.comboBoxShot.addItem(str(s_name), i)
-            
         
 
     def setup_channel_list(self):
         # get selected table
         current_table = self.comboBoxTable.currentText()
         current_shot = self.comboBoxShot.currentText()
-        print(f'current_table = {current_table}, current_shot = {current_shot}')
+        print(f'---> setup_channel_list: current_table = {current_table}, current_shot = {current_shot}')
         if current_shot == '':
             qwhere = None
         else:
@@ -382,7 +388,7 @@ class MainWindow(qtw.QMainWindow, Ui_MainWindow):
         current_table = self.comboBoxTable.currentText()
         current_shot = self.comboBoxShot.currentText()
         current_channel = self.comboBoxChannel.currentText()
-        print(f'current_table = {current_table}, current_shot = {current_shot}, current_channel = {current_channel}')
+        print(f'++++> setup_version_list : current_table = {current_table}, current_shot = {current_shot}, current_channel = {current_channel}')
         if (current_shot == ''):
             qwhere = None
         elif (current_channel == ''):
