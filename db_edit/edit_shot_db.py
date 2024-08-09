@@ -91,6 +91,8 @@ class MainWindow(qtw.QMainWindow, Ui_MainWindow):
         self.action_Close.triggered.connect( self.close_file)
         self.action_Quit.triggered.connect(self.quit_all)
         
+        self.checkBoxFixShot.setCheckState(qtc.Qt.Unchecked)
+        
         # make shotlist combobox searchable
         self.comboBoxShot.setEditable(True)
         self.comboBoxShot.setInsertPolicy(qtw.QComboBox.NoInsert)
@@ -244,7 +246,7 @@ class MainWindow(qtw.QMainWindow, Ui_MainWindow):
         if debug:
             print('show table help')
         # dlg = THD.TableHelpDialog(self.db_file, 'Raw_Fitting')
-        dlg = THD.TableHelpDialog(self.db_file, self.current_table)
+        dlg = THD.TableHelpDialog(self.current_table, help_info = 'edit_shot_db_help.db')
         dlg.exec()        
         
     def skip_db_edit(self):
@@ -291,9 +293,12 @@ class MainWindow(qtw.QMainWindow, Ui_MainWindow):
             return
         
     def update_scv(self):
-        print(f'===> db table trigger, update all, shot = {self.current_shot}')
-        print('setup shot combo')
-        self.setup_shot_list()
+        print(f'===> update_scv: db table trigger, update all, shot = {self.current_shot}')
+        print( '===> update_scv: setup shot combo')
+        if self.checkBoxFixShot.isChecked():
+            print(f'===> update_scv: shot number {self.current_shot} is fixed, no changein shot list')
+        else:
+            self.setup_shot_list()
         print('setup channel combo')
         self.setup_channel_list()
         print('setup version combo')

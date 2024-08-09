@@ -62,20 +62,20 @@ class analysis_data:
 
     def __init__(self, ra):
         self.ra = ra        
-        t_offset = ra.par['t_offset'] #cdata.par.get_value('t_offset')*us
+        t_offset = ra.par['t_offset'] # time offset (added to the times)
         # get directories
-        Afit_name = ra.var['Afit_name']
+        Afit_name = ra.var['Afit_name'] # Afit stands for amplitude fit
 
         # load data (faster loading then from txt)
         d = np.load(Afit_name)
-        tr = d['t'] + t_offset
+        tr = d['t'] + t_offset  # add time offset
         # all data
         Vpr = d['V']      # raw PH
         Ar = d['A']       # fitted PH
         dAr = d['sig_A']  # uncertainty in fit
         bkg_val = d['bkg_val'] # fitted bkg value at peak location
-        
-        self.tr = tr
+        # store the data in class
+        self.tr = tr   
         self.Vpr = Vpr
         self.Ar = Ar
         self.dAr = dAr
@@ -93,12 +93,15 @@ class analysis_data:
         # positive signals
         pa = Ar>0.
         self.pa = pa
+        
         r = np.abs(dAr[pa]/Ar[pa])
         # cut on error ratio
         self.r_cut_off = self.ra.par['sig_ratio']
+        
         # this is for good events
         gr = r < self.r_cut_off
         self.gr = gr
+        
         # this is to study background
         #gr = r > r_cut_off
 
@@ -139,21 +142,25 @@ class rate_analysis:
         (time_slice_width,) = db.retrieve(dbfile, 'time_slice_width','Rate_Analysis', wheredb)[0]                
         self.par['time_slice_width']=time_slice_width
 
-
+        # get histogram limits
         (h_min, h_max, h_bins) = db.retrieve(dbfile,'h_min, h_max, h_bins', 'Rate_Analysis', wheredb)[0]
-        self.par['h_min']= h_min
-        self.par['h_max']=h_max
+        self.par['h_min'] = h_min
+        self.par['h_max'] = h_max
+        # get number of histogram bins
         h_bins=int(h_bins)
         self.par['h_bins']=h_bins
 
-
+        # get drawinfg control parameres
         (draw_p, draw_t, draw_pul,draw_sum) = db.retrieve(dbfile,'draw_p, draw_t, draw_pul, draw_sum', 'Rate_Analysis', wheredb)[0]
         self.par['draw_p']=UT.Bool(draw_p)
         self.par['draw_t']=UT.Bool(draw_t)
         self.par['draw_pul']=UT.Bool(draw_pul)
         self.par['draw_sum']=UT.Bool(draw_sum)
 
-
+        # get pulse height limits to identify peaks
+        # p_  for protons
+        # t_  for tritons
+        # pul_ for pulser
         (p_min, p_max, t_min, t_max, pul_min, pul_max) = db.retrieve(dbfile,'p_min, p_max, t_min, t_max, \
         pul_min, pul_max', 'Rate_Analysis', wheredb)[0]
         self.par['p_min']=p_min
@@ -163,13 +170,14 @@ class rate_analysis:
         self.par['pulser_min'] = pul_min
         self.par['pulser_max'] = pul_max
 
-
+        # get the relative fit error in amplitude
         (sig_ratio)=db.retrieve(dbfile,'sig_ratio', 'Rate_Analysis', wheredb)[0]
         self.par['sig_ratio']=sig_ratio
 
         e_msg = f'No data for {shot} and channel {channel} in Shot_List'
         db.check_data(dbfile, 'Shot_List', 'Shot = '+str(shot) , e_msg)
         
+        # get the time offset
         (t_offset,)=db.retrieve(dbfile,'t_offset', 'Shot_List', 'Shot = '+str(shot))[0]
         self.par['t_offset']=t_offset
         

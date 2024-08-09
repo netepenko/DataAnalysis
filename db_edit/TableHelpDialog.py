@@ -22,9 +22,9 @@ from analysis_modules import database_operations as db
 debug = False
 
 class TableHelpDialog(QDialog):
-    def __init__(self, dbname, table):
+    def __init__(self,table, help_info = 'edit_shot_db_help.db'):
         super().__init__()
-        self.db_name = dbname  
+        self.db_name = help_info
         self.d_size = (650,400)
         self.table = table + '_Help'
         # get information about table 
