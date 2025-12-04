@@ -226,7 +226,8 @@ class raw_fitting:
         
         N = len(self.V)
         Np = int(len(self.V)/psize)  # rough estimate of the possible max. number of peaks
-        n_min, pmin, n_max, pmax = FP.find_peaks(N, Np, Vstep, self.V)
+        # n_min, pmin, n_max, pmax = FP.find_peaks(N, Np, Vstep, self.V) old version
+        n_min, pmin, n_max, pmax = FP.find_peaks(Np, Vstep, self.V, n = N)  # new version
     
         # number of maxima
         print(" found : ", n_max, " maxima")

@@ -35,7 +35,17 @@ def moving_average(x, m):
     xc = np.convolve(x, kern)[:x.shape[0]]
     return np.roll(xc, -m//2 + 1)
 
-
+#%%
+def circ_slice(a, start, end):
+    """ 
+    create a crcular slice
+    """
+    if start < 0:
+        return np.roll(a, -start)[:end - start]
+    else:
+        return a[start:end]    
+    
+#%%
 
 
 h_line = 70*'-'
@@ -54,12 +64,14 @@ class bkg:
 
         Parameters
         ----------
+        cdc : chanel data class instance
+            contains data and background data
         moving_average: int
             window size in data points for moving average (odd number), The default is 21
         niter: int
             number of moving average iterations. The default is 5
         time_window: float
-            time window width (in us) used to perform the correction. The default is 200
+            time window width used to perform the correction. THe default is 200
 
         Returns
         -------
@@ -72,20 +84,6 @@ class bkg:
         
         
     def moving_average(self, dd):
-        """
-        calculate the moving average and replace the original data with the averaged one. This is performed for the data as
-        weel as the background data
-
-        Parameters
-        ----------
-        dd : channel data class instance
-            current data to be averaged.
-
-        Returns
-        -------
-        None.
-
-        """
         if dd.Vps is None:
             print('moving average: no data loaded, nothing to do !')
             return
@@ -104,21 +102,6 @@ class bkg:
         print('Finished moving average for bkg:')
 
     def correct(self, dd):
-        """
-        Correct the data using the bkg data. Determined a series of slices and determine the phse-shoft 
-        between data and background. Shift the background data and determine the overall scale factor. Then subtrace the 
-        scaled bkg. data from the original data
-
-        Parameters
-        ----------
-        dd : Channel data class instance.
-            data set for the selected channel.
-
-        Returns
-        -------
-        None.
-
-        """
         if (dd.Vps is None):
             print(' no data loaded, nothing to do !')
             return        
@@ -150,13 +133,18 @@ class bkg:
             corr = signal.correlate(Vps_loc, Vn_loc, mode = 'full')
             lags = CL.correlation_lags(Vps_loc.size, Vn_loc.size, mode="full")
             
-            lag = lags[np.argmax(corr)]    
-            sel_r = slice(sel.start - lag, sel.stop - lag)
+            lag = lags[np.argmax(corr)] 
+            i_start = sel.start - lag
+            i_stop = sel.stop - lag
+            #sel_r = slice(i_start, i_stop)
             # shift noise to align with data
-            #Vnr = np.roll(dn.Vps, lag)
-            Vnr = dd.Vps_bkg[sel_r]
+            #Vnr = np.roll(dn.Vps, lag)ßß
+            #Vnr = dd.Vps_bkg[sel_r]
+            Vnr = circ_slice(dd.Vps_bkg, i_start, i_stop)
             # calculate optimal scaling factor
             #a = np.sum(dd.Vps[sel]*Vnr[sel])/np.sum(Vnr[sel]**2)
+            # # handle partial overlapp
+            
             a = np.sum(dd.Vps[sel]*Vnr)/np.sum(Vnr**2)
             
             #V_sig[sel] = dd.Vps[sel] - a*Vnr[sel]

@@ -386,8 +386,8 @@ class peak_sampling:
         
         N_dat = len(Vps)
         N_p = int(N_dat/psize)
-        
-        nmin, pmin, nmax, pmax = FP.find_peaks(N_dat, N_p, Vstep, Vps)
+        #nmin, pmin, nmax, pmax = FP.find_peaks(N_dat, N_p, Vstep, Vps) old version
+        nmin, pmin, nmax, pmax = FP.find_peaks(N_p, Vstep, Vps, n = N_dat) # new version
         
         # number of maxima
         print(" found : ", nmax, " maxima")
