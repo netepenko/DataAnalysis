@@ -11,7 +11,8 @@ import sqlite3, sys
 from PyQt5.QtWidgets import QDialog, QApplication
 
 # preapres the dialog layout for the selected table
-import LayoutsArray as LA
+#import LayoutsArray as LA
+import LayoutsArrayScrollArea as LA
 
 from analysis_modules import database_operations as db
 
@@ -47,7 +48,7 @@ class TableEntryDialog(QDialog):
             if debug:
                 print(f'{name} has type {v_type}')
         self.LA_ui = LA.Ui_Dialog()
-        self.LA_ui.setupUi(self, self.db_col_data, dialog_size=(450,400), title = title)
+        self.LA_ui.setupUi(self, self.db_col_data, dialog_size=(450,700), title = title)  # (450,400)
         self.show_entries()
         self.LA_ui.pushButtonSubmit.clicked.connect(self.update_entries)
         self.LA_ui.pushButtonDone.clicked.connect(self.quit)        
@@ -111,6 +112,6 @@ class TableEntryDialog(QDialog):
 # for testing
 if __name__=="__main__":
     app = QApplication(sys.argv)
-    w = TableEntryDialog('MAST-U_full_shot_listDB_test.db', 30121, 1, 0, 'Rate_Analysis')
+    w = TableEntryDialog('MAST-U_full_shot_listDB_test.db', 53433, 0, 0, 'Peak_Sampling')
     w.show()
     sys.exit(app.exec_())

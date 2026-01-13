@@ -70,21 +70,22 @@ def getN(self):
   except:
       print('Rescaling did not work for some reason')
 
-def plot_data(*args, **kwargs):
+def plot_data(t, V, *args, same = False,  **kwargs):
     N=kwargs.pop('N', 10000)  # return and remove the value of the key N if is does not exist return 1000
 
     #dropping points for first plot
-    t=args[0]
-    V=args[1]
-    rest=args[2:]
+    #t=args[0]
+    #V=args[1]
+    rest=args[:]
 
     n=1 #take every nth point from data
     if len(t)> N:
         n=int(round(len(t)/N))
     tcut=t[::n]
     Vcut=V[::n]
-
-    pl.figure()
+    
+    if not same:
+        pl.figure()
     a = pl.plot(tcut, Vcut, *rest, **kwargs)
 
     toolbar = a[0].figure.canvas.toolbar

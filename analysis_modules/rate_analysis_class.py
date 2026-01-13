@@ -75,7 +75,7 @@ class analysis_data:
         dAr = d['sig_A']  # uncertainty in fit
         bkg_val = d['bkg_val'] # fitted bkg value at peak location
         # store the data in class
-        self.tr = tr   
+        self.tr = tr 
         self.Vpr = Vpr
         self.Ar = Ar
         self.dAr = dAr
@@ -84,10 +84,10 @@ class analysis_data:
         self.select_signals()
 
     def select_signals(self):
-        tr = self.tr
-        Ar = self.Ar
-        dAr  = self.dAr
-        Vpr = self.Vpr
+        tr = self.tr     # peak time
+        Ar = self.Ar     # fitted PH
+        dAr  = self.dAr  # fitted uncertainty
+        Vpr = self.Vpr   # raw pulse height
         bkg_val = self.bkg_val
         
         # positive signals
@@ -105,12 +105,12 @@ class analysis_data:
         # this is to study background
         #gr = r > r_cut_off
 
-        # selected good data
+        # selected good data: Ar > 0 and r < r_cut_off
         self.tg = tr[pa][gr]
         self.Ag = Ar[pa][gr]
 
 
-        # simple pulse heights for testing
+        # simple pulse heights for testing, these include all data
         self.tp = tr[pa]
         self.Ap = Vpr[pa]   # raw data
         self.Ap_corr = Vpr[pa] - bkg_val[pa]  # pulse height corrected for fitted bkg

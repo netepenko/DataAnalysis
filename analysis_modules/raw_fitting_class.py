@@ -209,6 +209,9 @@ class raw_fitting:
         self.td=self.channel_data.td[sl]
         self.dt=self.channel_data.dt
         
+        self.V_fit = np.zeros_like(self.V)
+        self.p_fit = np.zeros_like(self.V)
+        
         if self.correct_data:
             self.V_corr = np.zeros_like(self.V)
 
@@ -293,7 +296,7 @@ class raw_fitting:
 
         Parameters
         ----------
-        i : int
+        ig : int
             fitgroup number.
         shifted: bool, optional
             use shifted fit group
@@ -430,10 +433,10 @@ class raw_fitting:
         """
         # check if there are any peaks to fit to handle
         # empty fit groups
+        sl = slice(-1,0)
         if ff[0] == ff[1]:
             # there are no peak in this group
             no_peaks = True
-            sl = slice(-1,0)
         else:
             no_peaks = False
         # time range of fit groups data
@@ -444,6 +447,7 @@ class raw_fitting:
         i_start_data = max(0, lims[0] - self.dl)
         i_stop_data = min(lims[1] + self.dl, self.td.shape[0])
         it_fit = slice(i_start_data,i_stop_data)
+        self.it_fit = it_fit
         # find which peaks are in a boundary area
         if (it_fit.start == it_fit.stop):
             # nothing to fit continue
@@ -488,11 +492,13 @@ class raw_fitting:
             # determine if the peaks are in a boundar region
             in_boundary = ((tp_fit - lims_t_start) < self.boundary) | ((lims_t_end - tp_fit) <self. boundary)
             # place first peak at 0
-            tt = self.td[it_fit] - tpk
-            Vt = self.V[it_fit] 
+            tt = self.td[it_fit] - tpk  # raw time data relative to tpk
+            Vt = self.V[it_fit]         # corresponding digitizer data
             # initialize fortran fit
-            t_peaks = tp_fit - tp_fit[0]
+            t_peaks = tp_fit - tp_fit[0]  # peak positions (first peak at 0)
             n_peaks = Vp_fit.shape[0]
+        self.tt = tt
+        self.Vt = Vt
         # initialize vary codes array
         vc = np.array(self.vary_codes_bkg + [1 for v in Vp_fit])
         # initalize fit
@@ -517,6 +523,19 @@ class raw_fitting:
                 print(f'Cov. negative values {cov.diagonal()[neg_cov]}')
         # calculate the error of the amplitudes
         sig_fitted_A = np.sqrt(np.abs(cov.diagonal()[self.bkg_len:]))* np.sqrt(abs(chisq ))
+        # save the difference fit - data without the fitted poly
+        p_loc = p(tt)
+        
+        V_fit_loc = line_shape(tt) - p_loc  
+        
+        self.V_fit[it_fit] = V_fit_loc
+        self.V_fit_loc = V_fit_loc
+        self.p_fit[it_fit] = p_loc
+        
+        self.p_loc = p_loc
+        self.tp_fit_loc = tp_fit
+        
+        
         #
         if (chisq < 0.):
             # failed fit
@@ -540,10 +559,10 @@ class raw_fitting:
             B.pl.figure()
             p = np.polynomial.Polynomial(bkg) # background
             #B.pl.plot(tt+tpk, Vt, '.', color = 'b' ) 
-            B.pl.plot(tt+tpk, Vt, '.', color = 'y' )
-            B.pl.plot(tp_fit, Vp_fit, 'o', color = 'r')
-            B.pl.plot(tt+tpk, line_shape(tt), color = 'blueviolet' )
-            B.pl.plot(tt+tpk, p(tt), color = 'g' )
+            B.pl.plot(tt+tpk, Vt, '.', color = 'y' )  # plot the raw data
+            B.pl.plot(tp_fit, Vp_fit, 'o', color = 'r') # plot the fittet peak position
+            B.pl.plot(tt+tpk, line_shape(tt), color = 'blueviolet' )  # plot the fitted line
+            B.pl.plot(tt+tpk, p(tt), color = 'g' ) # plot the bkg polynomial
             vy0,vy1 = B.pl.ylim()
             vx0 = self.td[lims[0]]
             vx1 = self.td[lims[1]]
@@ -561,7 +580,7 @@ class raw_fitting:
         if self.correct_data:
             # subract fitted background from data
             p = np.polynomial.Polynomial(bkg) # background polynomial
-            self.V_corr[it_fit] = Vt - p(tt)
+            self.V_corr[it_fit] = Vt - p(tt)    
 
         LF.lfitm1.free_all()
         # return fit results
@@ -591,6 +610,8 @@ class raw_fitting:
         
         # loop over fit groups and define peaks in the boundary area
         # arrays for storing fit results
+        self.t_fit = np.zeros_like(self.tp)
+        self.Vp_fit = np.zeros_like(self.tp)
         self.A_fit = np.zeros_like(self.tp)
         self.sig_A_fit = np.zeros_like(self.tp)
         
@@ -640,6 +661,12 @@ class raw_fitting:
             if (chisq > 0.):
                 # its_shift.append((tp_fit, sl, Vp_fit, chisq, np.copy(LF.a), np.copy(LF.covar)))
                 # same the values
+                if (self.use_refined):
+                    self.t_fit[sl] = self.tp_rf[sl]
+                    self.Vp_fit[sl] = self.Vp_rf[sl]
+                else:
+                    self.t_fit[sl] = self.tp[sl]
+                    self.Vp_fit[sl] = self.Vp[sl]
                 self.A_fit[sl] = fitted_A
                 self.sig_A_fit[sl] = sig_fitted_A
                 self.bkg_val[sl] = bkg_val
@@ -662,6 +689,8 @@ class raw_fitting:
         N_fitted = 0
         
         # arrays for storing fit results
+        self.t_fit_s = np.zeros_like(self.tp)
+        self.Vp_fit_s = np.zeros_like(self.tp)
         self.A_fit_s = np.zeros_like(self.tp)
         self.sig_A_fit_s = np.zeros_like(self.tp)
         # fit parameters
@@ -700,6 +729,12 @@ class raw_fitting:
             if (chisq > 0.):
                 # its_shift.append((tp_fit, sl, Vp_fit, chisq, np.copy(LF.a), np.copy(LF.covar)))
                 # same the values
+                if (self.use_refined):
+                    self.t_fit_s[sl] = self.tp_rf[sl]
+                    self.Vp_fit_s[sl] = self.Vp_rf[sl]
+                else:
+                    self.t_fit_s[sl] = self.tp[sl]
+                    self.Vp_fit_s[sl] = self.Vp[sl]
                 self.A_fit_s[sl] = fitted_A
                 self.sig_A_fit_s[sl] = sig_fitted_A
                 self.bkg_val_s[sl] = bkg_val
@@ -716,10 +751,12 @@ class raw_fitting:
         need to get the fit results from the shifted fit for those peaks e.g. for the indices
         """
         
-        self.A_fit[self.in_boundary] = self.A_fit_s[self.in_boundary]
-        self.sig_A_fit[self.in_boundary] = self.sig_A_fit_s[self.in_boundary]
-        self.bkg_par[self.in_boundary] = self.bkg_par_s[self.in_boundary]
-        self.bkg_val[self.in_boundary] = self.bkg_val_s[self.in_boundary]
+        self.t_fit[self.in_boundary] = self.t_fit_s[self.in_boundary]     # fitted times used
+        self.Vp_fit[self.in_boundary] = self.Vp_fit_s[self.in_boundary]   # raw pulse height for these times 
+        self.A_fit[self.in_boundary] = self.A_fit_s[self.in_boundary]     # fitted pulse height
+        self.sig_A_fit[self.in_boundary] = self.sig_A_fit_s[self.in_boundary] # uncertainty in fitted pulse height
+        self.bkg_par[self.in_boundary] = self.bkg_par_s[self.in_boundary]   # bkg parameters used
+        self.bkg_val[self.in_boundary] = self.bkg_val_s[self.in_boundary]   # bkg value for each pulse time
         
         
     def save_fit(self, new_row = False, overwrite = False):
@@ -757,7 +794,9 @@ class raw_fitting:
             fn = os.path.splitext(o_file)
             o_file= fn[0] + '_' + time.strftime('%d_%m_%Y_%H_%M_%S') + fn[1] 
         n_lines = self.tp.shape[0]
-        np.savez_compressed(o_file, t=self.tp, V=self.Vp, A=self.A_fit, sig_A=self.sig_A_fit, bkg=self.bkg_par, bkg_val=self.bkg_val)
+        #  Save the fitted data
+        # self.tp and self.Vp are mostly for debugging
+        np.savez_compressed(o_file, tp=self.tp, Vp=self.Vp, t = self.t_fit, V = self.Vp_fit, A=self.A_fit, sig_A=self.sig_A_fit, bkg=self.bkg_par, bkg_val=self.bkg_val)
         print("Wrote : ", n_lines, " lines to the output file: ", o_file)
         self.last_saved_in = o_file
         # store the file name in the database

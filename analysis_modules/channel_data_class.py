@@ -428,6 +428,23 @@ class channel_data():
             V = V[interval]            
         data_plotting.plot_data(t/us, V, **kwargs)
 
+#   plotting of raw background data data without overloading the figure
+# (skipping some data points according to maximum allowed points on plot)
+    def plot_raw_bkg(self, xmin=None, xmax=None, scale = 1., **kwargs):
+
+        V = self.Vps_bkg
+        t = self.td_bkg
+
+        if xmin and xmax:
+            interval = np.where((xmin < t) & (t < xmax))
+            t = t[interval]
+            V = V[interval]
+        else:
+            interval = np.where((self.par['dtmin'] < t) & (t < self.par['dtmax']))
+            t = t[interval]
+            V = V[interval]            
+        data_plotting.plot_data(t/us, V*scale, **kwargs)
+
 # add pulser signals to check fit performance
     def add_pulser(self):
         dtmax = self.par['dtmax']
