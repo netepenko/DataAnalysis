@@ -3,15 +3,18 @@ WB SQLITe data base initialization and operations to hande parameters needed for
 
 - create('/Users/boeglinw/my_db.db'):  creates an initial data base
 
+- January 2025 extended the shot-list table to contain more information
+
 """
 import sqlite3 as lite
 
 import os
 import sys
 import re
+import numpy as np
 #import os
 
-DATA_BASE_DIR = '/Users/boeglinw/Documents/boeglin.1/Fusion/Fusion_Products/DataAnalysis_Diamond/'
+DATA_BASE_DIR = '/Users/boeglinw/Documents/boeglin.1/Fusion/Fusion_Products/DataAnalysis/'
 
 NOSHOT = -99999  # Default number for new shot
 DB_ERROR = None
@@ -92,13 +95,13 @@ def create(db_file):
     
     
     # Shot list table
-    shot_list_fields = ['Shot',         'Date', 'File_Name',' Folder', 'RP_position', 'RP_setpoint','t_offset', 'N_chan', 'Comment']
-    shot_list_types =  ['INT not NULL', 'TEXT', 'TEXT',      'TEXT',   'REAL',        'REAL',         'REAL',   'INT',    'TEXT']
+    shot_list_fields = ['Shot',         'Date', 'File_Name',' Folder', 'RP_position', 'RP_setpoint','t_offset', 'N_chan', 'Signal_channels', 'Noise_channels', 'Detector_numbers', 'Digitizer_channels','Bias_voltages' , 'Comment']
+    shot_list_types =  ['INT not NULL', 'TEXT', 'TEXT',      'TEXT',   'REAL',        'REAL',         'REAL',   'INT',    'TEXT',            'TEXT',           'TEXT',             'TEXT',              'TEXT',           'TEXT']
     shot_list_values = []
-    shot_list_values.append( [29975,      '"22-Aug-2013"', '"29975_DAQ_220813-141746.hws"','"Data/"', 1.65, 0., 0., 6,   '"No comment"' ] )  # strings need to be enclosed in ""
-    shot_list_values.append ([29879,      '"19-Aug-2013"', '"DAQ_190813-112521.hws"','"Data/"', 1.83, 0., 0., 6,   '"No comment"' ])   # strings need to be enclosed in ""
-    shot_list_values.append([29880,      '"19-Aug-2013"', '"DAQ_190813-114059.hws"','"Data/"', 1.65, 0., 0., 6,   '"No comment"' ])   # strings need to be enclosed in "
-    shot_list_values.append( [99999,      '"22-Aug-2013"', '"29975_DAQ_220813-141746.hws"','"Data/"', 1.65, 0., 0., 6,   '"No comment"' ] )  # strings need to be enclosed in ""
+    shot_list_values.append( [29975,      '"22-Aug-2013"', '"29975_DAQ_220813-141746.hws"','"Data/"', 1.65, 0., 0., 4,  '"[0,1,2,3]"',          '"[]"',            '"[4,1,2,3]"',        '"[0,1,2,3]"', '"[40, 40, 40, 40,]"',   '"No comment"' ] )  # strings need to be enclosed in ""
+    shot_list_values.append ([29879,      '"19-Aug-2013"', '"DAQ_190813-112521.hws"','"Data/"', 1.83, 0., 0., 4,   '"[0,1,2,3]"',          '"[]"',            '"[4,1,2,3]"',        '"[0,1,2,3]"', '"[40, 40, 40, 40,]"',   '"No comment"' ])   # strings need to be enclosed in ""
+    shot_list_values.append([29880,      '"19-Aug-2013"', '"DAQ_190813-114059.hws"','"Data/"', 1.65, 0., 0., 4,    '"[0,1,2,3]"',          '"[]"',            '"[4,1,2,3]"',        '"[0,1,2,3]"', '"[40, 40, 40, 40,]"',  '"No comment"' ])   # strings need to be enclosed in "
+    shot_list_values.append( [99999,      '"22-Aug-2013"', '"29975_DAQ_220813-141746.hws"','"Data/"', 1.65, 0., 0., 4,   '"[0,1,2,3]"',          '"[]"',            '"[4,1,2,3]"',        '"[0,1,2,3]"', '"[40, 40, 40, 40,]"',   '"Prototype Shot"' ] )  # strings need to be enclosed in ""
 
     shot_list = db_table_data('Shot_List', shot_list_fields, shot_list_types, shot_list_values, special = 'PRIMARY KEY (Shot)') 
 
@@ -570,11 +573,11 @@ def find_version(q, is_where = True, called_from = ''):
     """
     Find a version statement, and return a new statemen without it.
     If is_where == True: q is a where statement from a query
-    if is_where == False: q is a substitution statement for db_write
+    if is_where == False: q is a substitution statement for db_write (comma separated assignments)
 
     Parameters
     ----------
-    q : strt
+    q : str
         where or substitution statement
     is_where : bool, optional
         if true, q is a where statement. The default is True.
@@ -605,7 +608,7 @@ def find_version(q, is_where = True, called_from = ''):
         # find version in subs statement
         # get fields 
         qf = [s.strip() for s in q.split(',')]
-        # find version
+        # find if there is a version assignment in qf
         has_v = ['Version' in s for s in qf]
         for i, v in enumerate(has_v):
             if v:
@@ -613,12 +616,11 @@ def find_version(q, is_where = True, called_from = ''):
                 has_version = True
         q_no_version = ', '.join(qf)
     print(f'-> find_version : ({called_from}): {has_version}, {q_no_version}, {version_value}')
-    print('-> find_version: return values')
     return has_version, q_no_version, version_value
 
 #%% duplicate row
 def duplicate_row(db_file, table, where_cp):
-    print(f'--------------- > duplicate_row intable {table} where {where_cp}')
+    print(f'--------------- > duplicate_row in table {table} where {where_cp}')
     global DB_ERROR
     """
     duplicates a row. If it is versioned it increments the version number
@@ -696,7 +698,7 @@ def duplicate_row(db_file, table, where_cp):
             values = [row_dict[k] for k in row_dict]
             # get the latest row id
             lastrowid = insert_row_into(db_file, table, names, values)            
-            max_version = -lastrowid  # make the last rowid negative to idntify the value as return value
+            max_version = -lastrowid  # make the last rowid negative to identify the value as return value
     conn.close()
     return has_version, max_version, where_cp_no_version
 
@@ -726,28 +728,36 @@ def copy_row(db_file, table, where_cp, substitutions):
 
     """
     # check if row exists
-    if not (check_condition(db_file, table, where_cp) ):
+    data_check = check_condition(db_file, table, where_cp)
+    print(f'data check for copy : {data_check}')
+    if not (data_check):
         print(f'copy_row---> No data for condition: {where_cp} in {table},  cannot copy')
         return
     # check if version is in the where_cp
     # first duplicate row
     has_version, max_version, where_cp_no_version = duplicate_row(db_file, table, where_cp)
+    print(f'after duplicate: has_version = {has_version}, max_version = {max_version} ')
     # insert new values
-    # find new version number
+    # find new version number for substitutions if not given
     found_version, _ , version_statement =  find_version(substitutions, is_where = False, called_from = 'copy_row')
-    if has_version:
-        vv = int(version_statement.split('=')[-1])
-        print(f'copy_row---> desired version = {vv}, {where_cp_no_version}')
-        # find version numbers for this query
-        versions = [int(r[0]) for r in retrieve(db_file, 'Version', table, where = where_cp_no_version)]
-        print(f'copy_row---> versions = {versions}')
-        # check if the chosen version value exists already, if so 
-        while vv in versions:
-            # the desired version exists already, increment it by one and try again
-            vv += 1
-        # valid version found
-        print(f'copy_row---> New version selected = {vv}')
-        writetodb(db_file, substitutions, table, where_cp )
+    # for a table with versions
+    if has_version:  
+        if (not found_version):
+            # no version statement found in substitutions, find unique value starting at 0
+            where_sub = substitutions.replace(',', ' AND ')
+            versions = [int(r[0]) for r in retrieve(db_file, 'Version', table, where = where_sub)]
+            print(f'copy_row---> versions = {versions}')
+            # set the new version to be the largest one
+            if versions == []:
+                vv = 0
+            else:
+                vv = np.array(versions).max() + 1
+            print(f'copy_row---> New version selected = {vv}')
+            writetodb(db_file, substitutions + f', Version = {vv}', table, where_cp + f' AND Version = {max_version} ' )            
+        else:
+            vv = int(version_statement.split('=')[-1])  # get the value from the version statement in the substitutions
+            print(f'copy_row---> desired version = {vv}, {substitutions}')
+            writetodb(db_file, substitutions, table, where_cp_no_version + f' AND Version = {max_version} ' )
     else:
         writetodb(db_file, substitutions, table,  f'ROWID = {-max_version}')
     print(f'----> copy_row: has_version = {has_version}, max_version = {max_version}')
@@ -792,19 +802,25 @@ def delete_row(db_file, table, where_del):
     
 
 #%% Tests
-"""
+
 if __name__ == "__main__":
     db_file = 'New_MainDB1.db'
-    wheredb_cp = ('Shot = 29975 AND Channel = 0')
-    wheredb_cp_new = ('Shot = 29980 AND Channel = 3')
-    print(wheredb_cp)
-    # create(db_file)
+    
+    where_db_cp = ('Shot = 99999 AND Channel = 0')
+    where_db_cp_new = ('Shot = 29978 AND Channel = 3 AND Version = 5')
+    
+    sub_db_cp_new = ('Shot = 29978, Channel = 3')
+    sub_db_cp_new_version = ('Shot = 29978, Channel = 3, Version=5')
+    
+    print(where_db_cp)
+    create(db_file)
     # try:
-    copyrow(db_file, 'Peak_Sampling', wheredb_cp, 'Shot = 29980, Channel = 3')
-    print(retrieve(db_file, '*','Peak_Sampling', wheredb_cp))
-    print(retrieve(db_file, '*','Peak_Sampling', wheredb_cp_new))
+    copy_row(db_file, 'Peak_Sampling', where_db_cp, sub_db_cp_new)
+    copy_row(db_file, 'Peak_Sampling', where_db_cp, sub_db_cp_new_version)
+    
+    print(retrieve(db_file, '*','Peak_Sampling', where_db_cp))
+    print(retrieve(db_file, '*','Peak_Sampling', where_db_cp_new))
     # except:
     #    print("Didnt work")
-"""
 
 
