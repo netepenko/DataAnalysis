@@ -289,18 +289,18 @@ def add_shot(dbfile, shot, filename, defaults = def_pars, **kwargs):
     # add Shot_list entry
     n_chan = len(KW_args['signal_channels'])
     parameters = [f'Shot = {shot}',
-                  f'RP_position = {KW_args["rp_pos"]}',
+                  'RP_position = '+f'{KW_args["rp_pos"]}',
                   f'RP_setpoint = {KW_args["rp_setpoint"]}',
                   f'File_Name = "{filename}"',
                   f'N_chan = {n_chan}',
                   f't_offset = {KW_args["t_offset"]}',
-                  f'Date = "{KW_args['date']}"',
-                  f'Folder = "{KW_args['folder']}"',
-                  f'Signal_channels = "{list_to_str(KW_args['signal_channels'])}"',
-                  f'Noise_channels = "{list_to_str(KW_args['noise_channels'])}"',
-                  f'Detector_numbers = "{list_to_str(KW_args['detector_numbers'])}"',
-                  f'Bias_voltages = "{list_to_str(KW_args['bias_voltages'])}"',
-                  f'Comment = "{KW_args['comment']}"'
+                  f'Date = "{KW_args["date"]}"',
+                  f'Folder = "{KW_args["folder"]}"',
+                  f'Signal_channels = "{list_to_str(KW_args["signal_channels"])}"',
+                  f'Noise_channels = "{list_to_str(KW_args["noise_channels"])}"',
+                  f'Detector_numbers = "{list_to_str(KW_args["detector_numbers"])}"',
+                  f'Bias_voltages = "{list_to_str(KW_args["bias_voltages"])}"',
+                  f'Comment = "{KW_args["comment"]}"'
                   ]
     new_par = ','.join(parameters)
     # check iof shot exists
