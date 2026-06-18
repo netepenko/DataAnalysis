@@ -185,12 +185,12 @@ class peak_sampling:
             fit parameter (peak position)
 
         """
+
         alpha = B.Parameter(1./self.decay_time, 'alpha')
         beta = B.Parameter(1./self.rise_time, 'beta')
         x0 = B.Parameter(ts[np.argmax(Vt)], 'x0') 
         H = B.Parameter(1.,'H') #max(Vt)  
         offset = B.Parameter(0., 'offset')         
-        
         # shift peak shape 
         def signal(x):
             sig, y = UT.peak(x-x0(), alpha(), beta() )
@@ -245,6 +245,8 @@ class peak_sampling:
         # create common array for peak data
         dt = self.channel_data.td[1] - self.channel_data.td[0]
         Vtotal=np.zeros(int(self.psize*(self.rise_time + self.decay_time)/dt) )
+        
+        print(f'Common peak array shape = {Vtotal.shape}')
         counters = np.zeros(int(self.psize*(self.rise_time + self.decay_time)/dt) )
         # local names
         Vps=self.channel_data.Vps  # digitizer data
@@ -254,7 +256,7 @@ class peak_sampling:
         if save_slices:
             self.good_peaks = t_slices
         # psize * rise time im indices
-        i_shift = int(self.psize*(self.rise_time/self.channel_data.dt) )      
+        i_shift = int(self.psize*(self.rise_time/dt) )      
         print( 'i_shift', i_shift)
         if self.plot_single_peaks:
            B.pl.figure() 
@@ -281,11 +283,11 @@ class peak_sampling:
                     B.pl.ylabel('V')
                     B.pl.axis('tight')            # shift the peaks to make sure that the maximum is at the same position
             
-            for i, V in enumerate(Vtotal):
+            for k, V in enumerate(Vtotal):
                 try:
-                    Vtotal[i] = Vtotal[i] + Vt[i + imax -  i_shift]  # start all 
-                    print(i, Vtotal[i])
-                    counters[i] += 1
+                    Vtotal[k] = Vtotal[k] + Vt[k + imax -  i_shift]  # start all 
+                    print(k, Vtotal[k])
+                    counters[k] += 1
                 except:
                     pass
             """  
@@ -299,7 +301,7 @@ class peak_sampling:
         
         if ttotal.shape[0] != Vtotal.shape[0]:
             print(f'Shape problem : ttotal ({ttotal.shape[0]}), Vtotal({Vtotal.shape[0]})')
-        
+
         # calculate average values 
         sel = counters > 0.
         Vtotal[sel] =  Vtotal[sel] / counters[sel]

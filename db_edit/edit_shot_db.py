@@ -26,6 +26,9 @@ from analysis_modules import database_operations as db
 
 debug = False
 
+has_no_version=['Shot_List', 'Common_Parameters']
+
+
 def MB_YesNo(q_text):
     """
     Yes/No message box
@@ -143,21 +146,31 @@ class MainWindow(qtw.QMainWindow, Ui_MainWindow):
         dlg.exec()
         
     def add_db_entry(self):
-           print('add DB entry')
-           self.show_current_values()
-           if self.current_table == 'Common_Parameters':
-               MB_Error('Cannot add entries to Common_Parameters ! (use edit instead)')
-               return
-               
+        print(f'add DB entry tp {self.current_table}')
+        self.show_current_values()
+        if self.current_table == 'Common_Parameters':
+            MB_Error('Cannot add entries to Common_Parameters ! (use edit instead)')
+            return
+           
+        if self.current_table == 'Shot_List':
            # make sure the information is complete
            dlg = TED.TableEntryDialog(self.db_file, \
                                       self.current_shot, \
                                           self.current_channel, \
                                               self.current_version, \
                                                   self.current_table, \
-                                                      title = f'Edit row for : {self.current_table}',\
+                                                      title = f'Add row for : {self.current_table}',\
                                                           action = 'copy')
-           dlg.exec()     
+        else:
+           dlg = TED.TableEntryDialog(self.db_file, \
+                                  self.current_shot, \
+                                      self.current_channel, \
+                                          self.current_version, \
+                                              self.current_table, \
+                                                  title = f'Edit row for : {self.current_table}',\
+                                                      action = 'copy')
+
+        dlg.exec()     
 
     def duplicate_row(self):
         print('===========>  duplicate the current row')
@@ -218,7 +231,6 @@ class MainWindow(qtw.QMainWindow, Ui_MainWindow):
         # setup query
         if (self.current_shot == ''):
             qwhere = 'True'
-            has_version = False
         elif (self.current_channel == '') and (self.current_version == ''): 
             qwhere = f'Shot = {self.current_shot}'
         elif (self.current_version == ''):

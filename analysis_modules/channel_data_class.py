@@ -80,7 +80,7 @@ class channel_data():
         data_version : TYPE, optional
             analysis version number for the corrected data file to be used. The default is None.
         file_type : TYPE, optional
-            channel data file type: raw, corrected, filtered . The default is 'raw'.
+            channel data file type: raw, corrected, filtered, pyuda . The default is 'raw'.
         iteration : TYPE, optional
             iteration number of corrected data file. The default is None.
         result_root : TYPE, optional
@@ -110,7 +110,8 @@ class channel_data():
         # dictionary of load data functions
         self.load_data_dict = {'raw':self.load_raw_data,
                           'corrected':self.load_hdf_data,
-                          'filtered':self.load_npz_data}
+                          'filtered':self.load_npz_data,
+                          'pyuda':self.load_pyuda_data}
         file_types = list(self.load_data_dict.keys())
         if not file_type in file_types:
             print(f'Unknown file type {file_type} allowable values are {file_types}')
@@ -182,6 +183,10 @@ class channel_data():
         (t_offset,) = db.retrieve(dbfile,  't_offset', 'Shot_List', which_shot)[0]
         self.par['t_offset'] = t_offset*us
         
+        
+        # adjust file name for extracted files from pyuda
+        if self.file_type == 'pyuda':
+            self.par['exp_file'] = self.par['exp_file'].format(self.channel,self.shot)
 
         # for scanning only no other parameters are needed
         if self.scan_only:
@@ -387,6 +392,24 @@ class channel_data():
         if self.par['add_pulser']:
             self.add_pulser()
 
+    def load_pyuda_data(self, file_name = None):
+        # --------------------------------
+        # ######## Load raw data #########
+        if file_name is None:
+            self.data_filename =  self.par['root_dir'] + self.par['exp_dir'] + self.par['exp_file']
+        else:
+            self.data_filename = file_name
+        self.f = np.load(self.data_filename)
+        d = self.f
+        print("--------------------- Get npz from pyuda data ------------------------")
+        ##added 6/16/2026
+        self.td = d['time']*us
+        self.Vps = d['signal']
+        self.dt = d['time'][1] - d['time'][0]
+        print("-----------------------Data loaded-------------------------")
+        # add pulser to data if add_pulser parameter set to True
+        if self.par['add_pulser']:
+            self.add_pulser()
     def load_hdf_data(self, file_name = None):
         # --------------------------------
         # ######## Load raw data #########
@@ -467,7 +490,8 @@ class channel_data():
                              1/self.par['rise_time'])[1]
         # Vtotal array of averaged and sampled signals
         # generate random times according to the rate and the time interval
-        t_pulse = np.random.uniform(size=N_events)*Delta_t
+        #t_pulse = np.random.uniform(size=N_events)*Delta_t this does not give the correct interval
+        t_pulse = np.random.uniform(low = dtmin, high = dtmax, size=N_events) 
         t_pulse.sort()   # sort the pulse times
         print(f'---> Added {t_pulse.size} random simulated pulses <---')
         # add the pulses to the signals

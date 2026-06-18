@@ -407,6 +407,7 @@ def get_row(db_file, table, where = None, return_dict = True):
     field_types = [s[2] for s in t_info]
     # get the raw data        
     rows = retrieve(db_file, '*', table, where = where, distinct = False)
+    print(f'get_row---> {rows}')
     if rows == []:
         return None
     else:
@@ -496,7 +497,9 @@ def update_row(db_file, table, names, values, where):
     cmd0 = f'UPDATE  {table} SET ' 
     cmd1 = ','.join( [f'{nn} = {values[i]}' for i,nn in enumerate(names)] )
     cmd2 = f' WHERE {where}'
-    q_line  = cmd0 + cmd1 + cmd2
+    q_line = cmd0 + cmd1
+    if where is not None:
+        q_line  += cmd2
     print(f'update_row: {q_line}')
     with conn:
         cur = conn.cursor()
@@ -655,6 +658,7 @@ def duplicate_row(db_file, table, where_cp):
         cur = conn.cursor()
         # check if a version field exists'
         has_version = 'Version' in field_names
+        print(f'duplicate_row---> has_version = {has_version}')
         # for finding the max row remove the Version statement from the query if it contains one
         found_version, where_cp_no_version, version_statement =  find_version(where_cp, is_where = True, called_from = 'duplcate_row')       
         # if there is a version statement in the where statement remove it

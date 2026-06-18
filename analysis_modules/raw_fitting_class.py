@@ -207,7 +207,7 @@ class raw_fitting:
         
         self.V=self.channel_data.Vps[sl]
         self.td=self.channel_data.td[sl]
-        self.dt=self.channel_data.dt
+        self.dt=self.channel_data.dt*us
         
         self.V_fit = np.zeros_like(self.V)
         self.p_fit = np.zeros_like(self.V)

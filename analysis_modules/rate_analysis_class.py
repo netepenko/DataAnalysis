@@ -56,11 +56,62 @@ def load_from_file(f):
         return pickle.load(open(f, "rb"))
     except Exception as err:
         print(f'Could load pickle file : {f} -> {err}')
-        
+
+
+def load_rate_analysis(f):
+    """
+    Load a save rate analysis pickle file and retiurn the object
+
+    Parameters
+    ----------
+    f : string
+        rate analysis class pickle file name.
+
+    Returns
+    -------
+    rate_analysis object
+
+    """        
+    return load_from_file(f)
     
 class analysis_data:
 
     def __init__(self, ra):
+        """
+        load fit results file, extract pulse height data and make them available for
+        the rate analysis
+
+        Parameters
+        ----------
+        ra : rate_analysis object
+            rate analysis object, where pule height data are to be stored.
+
+        Returns
+        -------
+        None.
+
+
+        Result Data Members
+        -------------------
+        
+        tr: time array including time offset
+        Ar: fitted pulse height (PH)
+        dAr: fitted PH uncertainty
+        Vpr: raw pulse height
+        bkg_val: fitted background value
+        
+        pa: Ar > 0 logical array where the fitted signal > 0.
+        gr: dAr/Ar < sig_ratio logical array where the ratio (sigma fit)/fit < sig_ratio (from DB) for fit quality criterion
+        
+        tg: good times where (Ar> 0) & (dAr/Ar < sig_ratio)
+        Ag: good signals where (Ar> 0) & (dAr/Ar < sig_ratio)
+        
+        tp: times where Ar > 0
+        Ap: Vpr where Ar > 0; raw data where A > 0
+        Ap_corr: Vpr - bkg_val; raw data corrected for fitted background where Ar > 0
+            
+        
+        """
         self.ra = ra        
         t_offset = ra.par['t_offset'] # time offset (added to the times)
         # get directories
@@ -119,6 +170,48 @@ class analysis_data:
 class rate_analysis:
 
     def __init__(self, dbfile, shot, channel, Afit_file = None, version = None):
+        """
+        Determine particle rates and create pulse hieght histograms. Parameters are controlled
+        via the data base
+
+        Parameters
+        ----------
+        dbfile : string
+            data base file nam.
+        shot : int
+            shot number
+        channel : int
+            data channel number.
+        Afit_file : string, optional
+            Fit result file name. The default is None, and the name is read ffrom the data base
+        version : int, optional
+            version number. The default is None, and the latest version in the data base is used.
+
+        Returns
+        -------
+        None.
+
+
+        Results
+        -------
+
+        important histograms:
+            
+        h: list of time slice histos for Ag (good signals)
+        h_tot: sum histo of all h's
+        
+        hp: list of time slice histos for Ag
+        hp_tot: sum histo of all hp 
+        
+        
+        h2: 2D-histogram Ag as a function of time (good signals)
+        
+        h2p: 2D-histogram Ap as a function of time (Ar > 0)
+        
+        h2p_corr: 2D-histogram Ag_corr as a function of time (Ar > 0)
+        
+        
+        """
         #frequently used variable to retrieve data from database, indicates shot and chennel
         # if version is not specified take the highest
         if version is None:
